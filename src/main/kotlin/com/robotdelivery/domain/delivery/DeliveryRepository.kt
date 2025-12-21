@@ -1,12 +1,10 @@
 package com.robotdelivery.domain.delivery
 
 import com.robotdelivery.domain.common.DeliveryId
+import org.springframework.data.jpa.repository.JpaRepository
 
-interface DeliveryRepository {
-    fun findById(id: DeliveryId): Delivery?
+interface DeliveryRepository : JpaRepository<Delivery, Long> {
+    fun findById(id: DeliveryId): Delivery? = findById(id.value).orElse(null)
 
-    fun findPendingDeliveries(): List<Delivery>
-
-    fun save(delivery: Delivery): Delivery
+    fun findAllByStatus(deliveryStatus: DeliveryStatus): List<Delivery>
 }
-

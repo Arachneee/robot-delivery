@@ -1,13 +1,10 @@
 package com.robotdelivery.domain.robot
 
 import com.robotdelivery.domain.common.RobotId
+import org.springframework.data.jpa.repository.JpaRepository
 
-interface RobotRepository {
-    fun findById(id: RobotId): Robot?
+interface RobotRepository : JpaRepository<Robot, Long> {
+    fun findById(id: RobotId): Robot? = findById(id.value).orElse(null)
 
-    fun findAll(): List<Robot>
-
-    fun findAvailableRobots(): List<Robot>
-
-    fun save(robot: Robot): Robot
+    fun findAllByStatus(status: RobotStatus): List<Robot>
 }
