@@ -1,8 +1,14 @@
 package com.robotdelivery.domain.robot
 
+import com.robotdelivery.domain.common.AggregateRoot
 import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.robot.event.RobotAssignedToDeliveryEvent
+import com.robotdelivery.domain.robot.event.RobotBecameAvailableEvent
+import com.robotdelivery.domain.robot.event.RobotEndedDutyEvent
+import com.robotdelivery.domain.robot.event.RobotLocationUpdatedEvent
+import com.robotdelivery.domain.robot.event.RobotStartedDutyEvent
 import jakarta.persistence.AttributeOverride
 import jakarta.persistence.AttributeOverrides
 import jakarta.persistence.Column
@@ -43,7 +49,8 @@ class Robot(
     val createdAt: LocalDateTime = LocalDateTime.now(),
     @Column(nullable = false)
     var updatedAt: LocalDateTime = LocalDateTime.now(),
-) {
+) : AggregateRoot() {
+
     fun getRobotId(): RobotId = RobotId(id)
 
     fun startDuty() {
@@ -51,6 +58,9 @@ class Robot(
             "출근할 수 없는 상태입니다. 현재 상태: $status"
         }
         transitionTo(RobotStatus.READY)
+
+        registerEvent(RobotStartedDutyEvent(robotId = getRobotId(), location = location))
+        registerEvent(RobotBecameAvailableEvent(robotId = getRobotId(), location = location))
     }
 
     fun endDuty() {
@@ -61,6 +71,8 @@ class Robot(
             "배달 수행 중에는 퇴근할 수 없습니다."
         }
         transitionTo(RobotStatus.OFF_DUTY)
+
+        registerEvent(RobotEndedDutyEvent(robotId = getRobotId()))
     }
 
     fun assignDelivery(deliveryId: DeliveryId) {
@@ -72,6 +84,8 @@ class Robot(
         }
         this.currentDeliveryId = deliveryId
         transitionTo(RobotStatus.BUSY)
+
+        registerEvent(RobotAssignedToDeliveryEvent(robotId = getRobotId(), deliveryId = deliveryId))
     }
 
     fun completeDelivery() {
@@ -83,6 +97,8 @@ class Robot(
         }
         this.currentDeliveryId = null
         transitionTo(RobotStatus.READY)
+
+        registerEvent(RobotBecameAvailableEvent(robotId = getRobotId(), location = location))
     }
 
     fun updateBattery(newBattery: Int) {
@@ -96,6 +112,8 @@ class Robot(
     fun updateLocation(newLocation: Location) {
         this.location = newLocation
         this.updatedAt = LocalDateTime.now()
+
+        registerEvent(RobotLocationUpdatedEvent(robotId = getRobotId(), location = newLocation))
     }
 
     private fun transitionTo(newStatus: RobotStatus) {

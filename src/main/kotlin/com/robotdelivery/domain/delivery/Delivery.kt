@@ -1,7 +1,12 @@
 package com.robotdelivery.domain.delivery
 
+import com.robotdelivery.domain.common.AggregateRoot
 import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.delivery.event.DeliveryCompletedEvent
+import com.robotdelivery.domain.delivery.event.DeliveryCreatedEvent
+import com.robotdelivery.domain.delivery.event.DeliveryStartedEvent
+import com.robotdelivery.domain.delivery.event.RobotAssignedToDeliveryEvent
 import jakarta.persistence.AttributeOverride
 import jakarta.persistence.AttributeOverrides
 import jakarta.persistence.Column
@@ -52,7 +57,19 @@ class Delivery(
     var updatedAt: LocalDateTime = LocalDateTime.now(),
     @Column
     var completedAt: LocalDateTime? = null,
-) {
+) : AggregateRoot() {
+    init {
+        if (id == 0L) {
+            registerEvent(
+                DeliveryCreatedEvent(
+                    deliveryId = getDeliveryId(),
+                    pickupLocation = pickupDestination.location,
+                    deliveryLocation = deliveryDestination.location,
+                ),
+            )
+        }
+    }
+
     fun getDeliveryId(): DeliveryId = DeliveryId(id)
 
     fun assignRobot(robotId: RobotId) {
@@ -61,6 +78,14 @@ class Delivery(
         }
         this.assignedRobotId = robotId
         transitionTo(DeliveryStatus.ASSIGNED)
+
+        registerEvent(
+            RobotAssignedToDeliveryEvent(
+                deliveryId = getDeliveryId(),
+                robotId = robotId,
+                pickupLocation = pickupDestination.location,
+            ),
+        )
     }
 
     fun startDelivery() {
@@ -68,6 +93,13 @@ class Delivery(
             "픽업 중 상태에서만 배송을 시작할 수 있습니다. 현재 상태: $status"
         }
         transitionTo(DeliveryStatus.DELIVERING)
+
+        registerEvent(
+            DeliveryStartedEvent(
+                deliveryId = getDeliveryId(),
+                robotId = assignedRobotId!!,
+            ),
+        )
     }
 
     fun arrived() {
@@ -98,6 +130,13 @@ class Delivery(
         }
         transitionTo(DeliveryStatus.COMPLETED)
         this.completedAt = LocalDateTime.now()
+
+        registerEvent(
+            DeliveryCompletedEvent(
+                deliveryId = getDeliveryId(),
+                robotId = assignedRobotId!!,
+            ),
+        )
     }
 
     fun completeReturn() {
