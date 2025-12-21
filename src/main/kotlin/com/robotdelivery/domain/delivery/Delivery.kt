@@ -6,7 +6,7 @@ import com.robotdelivery.domain.common.RobotId
 import com.robotdelivery.domain.delivery.event.DeliveryCompletedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryCreatedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryStartedEvent
-import com.robotdelivery.domain.delivery.event.RobotAssignedToDeliveryEvent
+import com.robotdelivery.domain.delivery.event.DeliveryRobotAssignedEvent
 import jakarta.persistence.*
 import java.time.LocalDateTime
 
@@ -65,8 +65,6 @@ class Delivery(
         }
     }
 
-    fun getDeliveryId(): DeliveryId = DeliveryId(id)
-
     fun assignRobot(robotId: RobotId) {
         require(status == DeliveryStatus.PENDING) {
             "대기 상태의 배달만 로봇 배차가 가능합니다. 현재 상태: $status"
@@ -75,7 +73,7 @@ class Delivery(
         transitionTo(DeliveryStatus.ASSIGNED)
 
         registerEvent(
-            RobotAssignedToDeliveryEvent(
+            DeliveryRobotAssignedEvent(
                 deliveryId = getDeliveryId(),
                 robotId = robotId,
                 pickupLocation = pickupDestination.location,
@@ -163,6 +161,14 @@ class Delivery(
         this.updatedAt = LocalDateTime.now()
     }
 
+    fun isActive(): Boolean =
+        status !in
+            listOf(
+                DeliveryStatus.COMPLETED,
+                DeliveryStatus.CANCELED,
+                DeliveryStatus.RETURN_COMPLETED,
+            )
+
     fun getCurrentDestination(): Destination? =
         when (status) {
             DeliveryStatus.PENDING -> null
@@ -172,11 +178,8 @@ class Delivery(
             DeliveryStatus.COMPLETED, DeliveryStatus.CANCELED, DeliveryStatus.RETURN_COMPLETED -> null
         }
 
-    fun isActive(): Boolean =
-        status !in
-            listOf(
-                DeliveryStatus.COMPLETED,
-                DeliveryStatus.CANCELED,
-                DeliveryStatus.RETURN_COMPLETED,
-            )
+    fun getDeliveryId(): DeliveryId = DeliveryId(id)
+
+    override fun toString(): String =
+        "Delivery(id=$id, phoneNumber='$phoneNumber', status=$status, assignedRobotId=$assignedRobotId, isNew=$isNew)"
 }

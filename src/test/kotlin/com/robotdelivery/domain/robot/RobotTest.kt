@@ -154,8 +154,8 @@ class RobotTest {
         }
 
         @Test
-        @DisplayName("배달 할당 시 RobotAssignedToDeliveryEvent가 발생한다")
-        fun `배달 할당 시 RobotAssignedToDeliveryEvent가 발생한다`() {
+        @DisplayName("배달 할당 시 RobotDeliveryAssignedEvent가 발생한다")
+        fun `배달 할당 시 RobotDeliveryAssignedEvent가 발생한다`() {
             val robot = createRobot(status = RobotStatus.READY)
             val deliveryId = DeliveryId(1L)
 
@@ -163,7 +163,7 @@ class RobotTest {
             val events = robot.pullDomainEvents()
 
             assertEquals(1, events.size)
-            val event = events[0] as RobotAssignedToDeliveryEvent
+            val event = events[0] as RobotDeliveryAssignedEvent
             assertEquals(deliveryId, event.deliveryId)
         }
 

@@ -4,22 +4,9 @@ import com.robotdelivery.domain.common.AggregateRoot
 import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.common.RobotId
-import com.robotdelivery.domain.robot.event.RobotAssignedToDeliveryEvent
-import com.robotdelivery.domain.robot.event.RobotBecameAvailableEvent
-import com.robotdelivery.domain.robot.event.RobotEndedDutyEvent
-import com.robotdelivery.domain.robot.event.RobotLocationUpdatedEvent
-import com.robotdelivery.domain.robot.event.RobotStartedDutyEvent
-import jakarta.persistence.AttributeOverride
-import jakarta.persistence.AttributeOverrides
-import jakarta.persistence.Column
-import jakarta.persistence.Embedded
-import jakarta.persistence.Entity
-import jakarta.persistence.EnumType
-import jakarta.persistence.Enumerated
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import jakarta.persistence.Table
+import com.robotdelivery.domain.robot.event.*
+import jakarta.persistence.*
+import org.slf4j.LoggerFactory
 import java.time.LocalDateTime
 
 @Entity
@@ -33,7 +20,7 @@ class Robot(
     val name: String,
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    var status: RobotStatus = RobotStatus.OFF_DUTY,
+    var status: RobotStatus = RobotStatus.READY,
     @Column(nullable = false)
     var battery: Int = 100,
     @Embedded
@@ -50,7 +37,6 @@ class Robot(
     @Column(nullable = false)
     var updatedAt: LocalDateTime = LocalDateTime.now(),
 ) : AggregateRoot() {
-
     fun getRobotId(): RobotId = RobotId(id)
 
     fun startDuty() {
@@ -85,7 +71,7 @@ class Robot(
         this.currentDeliveryId = deliveryId
         transitionTo(RobotStatus.BUSY)
 
-        registerEvent(RobotAssignedToDeliveryEvent(robotId = getRobotId(), deliveryId = deliveryId))
+        registerEvent(RobotDeliveryAssignedEvent(robotId = getRobotId(), deliveryId = deliveryId))
     }
 
     fun completeDelivery() {
@@ -125,4 +111,11 @@ class Robot(
     }
 
     fun isAvailable(): Boolean = status.isAvailableForDelivery() && currentDeliveryId == null && battery >= 20
+
+    override fun toString(): String =
+        "Robot(id=$id, name='$name', status=$status, battery=$battery, location=$location, currentDeliveryId=$currentDeliveryId)"
+
+    companion object {
+        private val log = LoggerFactory.getLogger(javaClass)
+    }
 }

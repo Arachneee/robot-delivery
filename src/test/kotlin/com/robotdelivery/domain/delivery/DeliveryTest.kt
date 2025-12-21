@@ -5,7 +5,7 @@ import com.robotdelivery.domain.common.RobotId
 import com.robotdelivery.domain.delivery.event.DeliveryCompletedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryCreatedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryStartedEvent
-import com.robotdelivery.domain.delivery.event.RobotAssignedToDeliveryEvent
+import com.robotdelivery.domain.delivery.event.DeliveryRobotAssignedEvent
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -115,8 +115,8 @@ class DeliveryTest {
         }
 
         @Test
-        @DisplayName("로봇 할당 시 RobotAssignedToDeliveryEvent가 발생한다")
-        fun `로봇 할당 시 RobotAssignedToDeliveryEvent가 발생한다`() {
+        @DisplayName("로봇 할당 시 DeliveryRobotAssignedEvent가 발생한다")
+        fun `로봇 할당 시 DeliveryRobotAssignedEvent가 발생한다`() {
             val delivery = createDelivery()
             val robotId = RobotId(1L)
 
@@ -124,7 +124,7 @@ class DeliveryTest {
             val events = delivery.pullDomainEvents()
 
             assertEquals(1, events.size)
-            val event = events[0] as RobotAssignedToDeliveryEvent
+            val event = events[0] as DeliveryRobotAssignedEvent
             assertEquals(robotId, event.robotId)
         }
 
