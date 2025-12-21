@@ -11,7 +11,7 @@ class DeliveryCreatedEvent(
     val deliveryLocation: Location,
 ) : DomainEvent()
 
-class RobotAssignedToDeliveryEvent(
+class DeliveryRobotAssignedEvent(
     val deliveryId: DeliveryId,
     val robotId: RobotId,
     val pickupLocation: Location,
