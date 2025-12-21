@@ -7,17 +7,7 @@ import com.robotdelivery.domain.delivery.event.DeliveryCompletedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryCreatedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryStartedEvent
 import com.robotdelivery.domain.delivery.event.RobotAssignedToDeliveryEvent
-import jakarta.persistence.AttributeOverride
-import jakarta.persistence.AttributeOverrides
-import jakarta.persistence.Column
-import jakarta.persistence.Embedded
-import jakarta.persistence.Entity
-import jakarta.persistence.EnumType
-import jakarta.persistence.Enumerated
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import jakarta.persistence.Table
+import jakarta.persistence.*
 import java.time.LocalDateTime
 
 @Entity
@@ -58,8 +48,12 @@ class Delivery(
     @Column
     var completedAt: LocalDateTime? = null,
 ) : AggregateRoot() {
-    init {
-        if (id == 0L) {
+    @Transient
+    private var isNew: Boolean = (id == 0L)
+
+    @PostPersist
+    fun onPostPersist() {
+        if (isNew) {
             registerEvent(
                 DeliveryCreatedEvent(
                     deliveryId = getDeliveryId(),
@@ -67,6 +61,7 @@ class Delivery(
                     deliveryLocation = deliveryDestination.location,
                 ),
             )
+            isNew = false
         }
     }
 
