@@ -8,6 +8,8 @@ import com.robotdelivery.domain.delivery.event.DeliveryCreatedEvent
 import com.robotdelivery.domain.robot.Robot
 import com.robotdelivery.domain.robot.RobotRepository
 import com.robotdelivery.domain.robot.event.RobotBecameAvailableEvent
+import org.slf4j.LoggerFactory
+import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
 import org.springframework.transaction.event.TransactionalEventListener
 
@@ -18,19 +20,45 @@ class DeliveryAssignmentEventHandler(
     private val assignmentService: DeliveryAssignmentService,
     private val eventPublisher: DomainEventPublisher,
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
+
+    @Async
     @TransactionalEventListener
     fun handle(event: DeliveryCreatedEvent) {
-        val delivery = deliveryRepository.findById(event.deliveryId) ?: return
-        val robot = assignmentService.assignNearestRobotToDelivery(delivery) ?: return
+        log.info("DeliveryCreatedEvent 수신: deliveryId={}", event.deliveryId)
 
+        val delivery =
+            deliveryRepository.findById(event.deliveryId) ?: run {
+                log.warn("배달을 찾을 수 없음: deliveryId={}", event.deliveryId)
+                return
+            }
+        val robot =
+            assignmentService.assignNearestRobotToDelivery(delivery) ?: run {
+                log.warn("배정 가능한 로봇 없음: deliveryId={}", event.deliveryId)
+                return
+            }
+
+        log.info("로봇 배정 완료: delivery={}, robot={}", delivery, robot)
         saveAndPublishEvents(delivery, robot)
     }
 
+    @Async
     @TransactionalEventListener
     fun handle(event: RobotBecameAvailableEvent) {
-        val robot = robotRepository.findById(event.robotId) ?: return
-        val delivery = assignmentService.assignNearestDeliveryToRobot(robot) ?: return
+        log.info("RobotBecameAvailableEvent 수신: robotId={}", event.robotId)
 
+        val robot =
+            robotRepository.findById(event.robotId) ?: run {
+                log.warn("로봇을 찾을 수 없음: robotId={}", event.robotId)
+                return
+            }
+        val delivery =
+            assignmentService.assignNearestDeliveryToRobot(robot) ?: run {
+                log.warn("배정 가능한 배달 없음: robotId={}", event.robotId)
+                return
+            }
+
+        log.info("배달 배정 완료: robot={}, delivery={}", robot, delivery)
         saveAndPublishEvents(delivery, robot)
     }
 
