@@ -1,19 +1,16 @@
 package com.robotdelivery.domain.robot
 
-import com.robotdelivery.domain.common.AggregateRoot
+import com.robotdelivery.domain.common.BaseEntity
 import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.common.RobotId
-import com.robotdelivery.domain.robot.event.*
+import com.robotdelivery.domain.robot.event.RobotArrivedAtDestinationEvent
+import com.robotdelivery.domain.robot.event.RobotBecameAvailableEvent
+import com.robotdelivery.domain.robot.event.RobotDestinationChangedEvent
 import jakarta.persistence.*
 import org.slf4j.LoggerFactory
-import org.springframework.data.annotation.CreatedDate
-import org.springframework.data.annotation.LastModifiedDate
-import org.springframework.data.jpa.domain.support.AuditingEntityListener
-import java.time.LocalDateTime
 
 @Entity
-@EntityListeners(AuditingEntityListener::class)
 @Table(name = "robots")
 class Robot(
     @Id
@@ -42,13 +39,7 @@ class Robot(
         AttributeOverride(name = "longitude", column = Column(name = "destination_longitude")),
     )
     var destination: Location? = null,
-    @CreatedDate
-    @Column(nullable = false, updatable = false)
-    val createdAt: LocalDateTime = LocalDateTime.now(),
-    @LastModifiedDate
-    @Column(nullable = false)
-    var updatedAt: LocalDateTime = LocalDateTime.now(),
-) : AggregateRoot() {
+) : BaseEntity<Robot>() {
     fun getRobotId(): RobotId = RobotId(id)
 
     fun startDuty() {
@@ -57,7 +48,6 @@ class Robot(
         }
         transitionTo(RobotStatus.READY)
 
-        registerEvent(RobotStartedDutyEvent(robotId = getRobotId(), location = location))
         registerEvent(RobotBecameAvailableEvent(robotId = getRobotId(), location = location))
     }
 
@@ -69,8 +59,6 @@ class Robot(
             "배달 수행 중에는 퇴근할 수 없습니다."
         }
         transitionTo(RobotStatus.OFF_DUTY)
-
-        registerEvent(RobotEndedDutyEvent(robotId = getRobotId()))
     }
 
     fun assignDelivery(
@@ -86,13 +74,6 @@ class Robot(
         this.currentDeliveryId = deliveryId
         transitionTo(RobotStatus.BUSY)
         navigateTo(pickupLocation)
-
-        registerEvent(
-            RobotDeliveryAssignedEvent(
-                robotId = getRobotId(),
-                deliveryId = deliveryId,
-            ),
-        )
     }
 
     fun completeDelivery() {
