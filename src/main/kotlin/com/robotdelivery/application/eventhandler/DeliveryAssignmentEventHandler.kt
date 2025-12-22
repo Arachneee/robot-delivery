@@ -1,6 +1,5 @@
 package com.robotdelivery.application.eventhandler
 
-import com.robotdelivery.domain.common.DomainEventPublisher
 import com.robotdelivery.domain.delivery.Delivery
 import com.robotdelivery.domain.delivery.DeliveryAssignmentService
 import com.robotdelivery.domain.delivery.DeliveryRepository
@@ -18,7 +17,6 @@ class DeliveryAssignmentEventHandler(
     private val deliveryRepository: DeliveryRepository,
     private val robotRepository: RobotRepository,
     private val assignmentService: DeliveryAssignmentService,
-    private val eventPublisher: DomainEventPublisher,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -68,8 +66,5 @@ class DeliveryAssignmentEventHandler(
     ) {
         deliveryRepository.save(delivery)
         robotRepository.save(robot)
-
-        eventPublisher.publishAll(delivery.pullDomainEvents())
-        eventPublisher.publishAll(robot.pullDomainEvents())
     }
 }

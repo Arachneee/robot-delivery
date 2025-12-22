@@ -2,7 +2,6 @@ package com.robotdelivery.application
 
 import com.robotdelivery.application.client.RobotClient
 import com.robotdelivery.domain.common.DeliveryId
-import com.robotdelivery.domain.common.DomainEventPublisher
 import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.delivery.Delivery
 import com.robotdelivery.domain.delivery.DeliveryRepository
@@ -16,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional
 class DeliveryService(
     private val deliveryRepository: DeliveryRepository,
     private val robotRepository: RobotRepository,
-    private val eventPublisher: DomainEventPublisher,
     private val robotClient: RobotClient,
 ) {
     fun createDelivery(
@@ -49,8 +47,6 @@ class DeliveryService(
 
         val savedDelivery = deliveryRepository.saveAndFlush(delivery)
 
-        eventPublisher.publishAll(savedDelivery.pullDomainEvents())
-
         return savedDelivery.getDeliveryId()
     }
 
@@ -72,9 +68,6 @@ class DeliveryService(
 
         deliveryRepository.save(delivery)
         robotRepository.save(robot)
-
-        eventPublisher.publishAll(delivery.pullDomainEvents())
-        eventPublisher.publishAll(robot.pullDomainEvents())
     }
 
     fun openDoor(deliveryId: DeliveryId) {
@@ -110,10 +103,6 @@ class DeliveryService(
 
         deliveryRepository.save(delivery)
         robotRepository.save(robot)
-
-        eventPublisher.publishAll(delivery.pullDomainEvents())
-
-        robotClient.navigateTo(robotId, delivery.deliveryDestination.location)
     }
 
     fun completeReturn(deliveryId: DeliveryId) {
@@ -134,8 +123,5 @@ class DeliveryService(
 
         deliveryRepository.save(delivery)
         robotRepository.save(robot)
-
-        eventPublisher.publishAll(delivery.pullDomainEvents())
-        eventPublisher.publishAll(robot.pullDomainEvents())
     }
 }
