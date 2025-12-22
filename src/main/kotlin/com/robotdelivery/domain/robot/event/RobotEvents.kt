@@ -22,11 +22,12 @@ class RobotBecameAvailableEvent(
 class RobotDeliveryAssignedEvent(
     val robotId: RobotId,
     val deliveryId: DeliveryId,
+    val pickupLocation: Location,
 ) : DomainEvent()
 
-class RobotLocationUpdatedEvent(
+class RobotArrivedAtDestinationEvent(
     val robotId: RobotId,
-    val location: Location,
+    val destination: Location,
 ) : DomainEvent()
 
 class RobotBrokenEvent(

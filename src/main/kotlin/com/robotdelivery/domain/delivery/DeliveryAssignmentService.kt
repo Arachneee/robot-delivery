@@ -17,7 +17,7 @@ class DeliveryAssignmentService(
                 ?: return null
 
         delivery.assignRobot(nearestRobot.getRobotId())
-        nearestRobot.assignDelivery(delivery.getDeliveryId())
+        nearestRobot.assignDelivery(delivery.getDeliveryId(), delivery.pickupDestination.location)
 
         return nearestRobot
     }
@@ -32,7 +32,7 @@ class DeliveryAssignmentService(
                 ?: return null
 
         nearestDelivery.assignRobot(robot.getRobotId())
-        robot.assignDelivery(nearestDelivery.getDeliveryId())
+        robot.assignDelivery(nearestDelivery.getDeliveryId(), nearestDelivery.pickupDestination.location)
 
         return nearestDelivery
     }

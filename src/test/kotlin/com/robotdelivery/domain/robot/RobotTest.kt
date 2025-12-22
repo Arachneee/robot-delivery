@@ -146,8 +146,9 @@ class RobotTest {
         fun `READY 상태에서 배달을 할당받을 수 있다`() {
             val robot = createRobot(status = RobotStatus.READY)
             val deliveryId = DeliveryId(1L)
+            val pickupLocation = Location(latitude = 37.5665, longitude = 126.9780)
 
-            robot.assignDelivery(deliveryId)
+            robot.assignDelivery(deliveryId, pickupLocation)
 
             assertEquals(RobotStatus.BUSY, robot.status)
             assertEquals(deliveryId, robot.currentDeliveryId)
@@ -158,23 +159,26 @@ class RobotTest {
         fun `배달 할당 시 RobotDeliveryAssignedEvent가 발생한다`() {
             val robot = createRobot(status = RobotStatus.READY)
             val deliveryId = DeliveryId(1L)
+            val pickupLocation = Location(latitude = 37.5665, longitude = 126.9780)
 
-            robot.assignDelivery(deliveryId)
+            robot.assignDelivery(deliveryId, pickupLocation)
             val events = robot.pullDomainEvents()
 
             assertEquals(1, events.size)
             val event = events[0] as RobotDeliveryAssignedEvent
             assertEquals(deliveryId, event.deliveryId)
+            assertEquals(pickupLocation, event.pickupLocation)
         }
 
         @Test
         @DisplayName("OFF_DUTY 상태에서 배달을 할당받으면 예외가 발생한다")
         fun `OFF_DUTY 상태에서 배달을 할당받으면 예외가 발생한다`() {
             val robot = createRobot()
+            val pickupLocation = Location(latitude = 37.5665, longitude = 126.9780)
 
             val exception =
                 assertThrows<IllegalArgumentException> {
-                    robot.assignDelivery(DeliveryId(1L))
+                    robot.assignDelivery(DeliveryId(1L), pickupLocation)
                 }
             assertTrue(exception.message!!.contains("배달을 받을 수 없는 상태입니다"))
         }
@@ -183,10 +187,11 @@ class RobotTest {
         @DisplayName("이미 배달 수행 중이면 새 배달을 할당받을 수 없다")
         fun `이미 배달 수행 중이면 새 배달을 할당받을 수 없다`() {
             val robot = createRobot(status = RobotStatus.BUSY, currentDeliveryId = DeliveryId(1L))
+            val pickupLocation = Location(latitude = 37.5665, longitude = 126.9780)
 
             val exception =
                 assertThrows<IllegalArgumentException> {
-                    robot.assignDelivery(DeliveryId(2L))
+                    robot.assignDelivery(DeliveryId(2L), pickupLocation)
                 }
             assertTrue(
                 exception.message!!.contains("배달을 받을 수 없는 상태입니다") ||
@@ -299,17 +304,97 @@ class RobotTest {
         }
 
         @Test
-        @DisplayName("위치 업데이트 시 RobotLocationUpdatedEvent가 발생한다")
-        fun `위치 업데이트 시 RobotLocationUpdatedEvent가 발생한다`() {
-            val robot = createRobot()
+        @DisplayName("목적지가 없으면 도착 이벤트가 발생하지 않는다")
+        fun `목적지가 없으면 도착 이벤트가 발생하지 않는다`() {
+            val robot = createRobot(status = RobotStatus.READY)
             val newLocation = Location(latitude = 37.4979, longitude = 127.0276)
 
             robot.updateLocation(newLocation)
             val events = robot.pullDomainEvents()
 
+            assertTrue(events.isEmpty())
+        }
+
+        @Test
+        @DisplayName("목적지에 도착하면 RobotArrivedAtDestinationEvent가 발생한다")
+        fun `목적지에 도착하면 RobotArrivedAtDestinationEvent가 발생한다`() {
+            val robot = createRobot(status = RobotStatus.READY)
+            val pickupLocation = Location(latitude = 37.5000, longitude = 127.0000)
+            robot.assignDelivery(DeliveryId(1L), pickupLocation)
+            robot.pullDomainEvents() // 배달 할당 이벤트 제거
+
+            robot.updateLocation(pickupLocation)
+            val events = robot.pullDomainEvents()
+
             assertEquals(1, events.size)
-            val event = events[0] as RobotLocationUpdatedEvent
-            assertEquals(newLocation, event.location)
+            val event = events[0] as RobotArrivedAtDestinationEvent
+            assertEquals(pickupLocation, event.destination)
+        }
+
+        @Test
+        @DisplayName("목적지에서 5m 이내이면 도착으로 판단한다")
+        fun `목적지에서 5m 이내이면 도착으로 판단한다`() {
+            val robot = createRobot(status = RobotStatus.READY)
+            val pickupLocation = Location(latitude = 37.5000, longitude = 127.0000)
+            robot.assignDelivery(DeliveryId(1L), pickupLocation)
+            robot.pullDomainEvents()
+
+            // 약 3m 떨어진 위치 (위도 0.00003도 ≈ 약 3.3m)
+            val nearbyLocation = Location(latitude = 37.50003, longitude = 127.0000)
+            robot.updateLocation(nearbyLocation)
+            val events = robot.pullDomainEvents()
+
+            assertEquals(1, events.size)
+            assertTrue(events[0] is RobotArrivedAtDestinationEvent)
+        }
+
+        @Test
+        @DisplayName("목적지에서 5m 초과이면 도착 이벤트가 발생하지 않는다")
+        fun `목적지에서 5m 초과이면 도착 이벤트가 발생하지 않는다`() {
+            val robot = createRobot(status = RobotStatus.READY)
+            val pickupLocation = Location(latitude = 37.5000, longitude = 127.0000)
+            robot.assignDelivery(DeliveryId(1L), pickupLocation)
+            robot.pullDomainEvents()
+
+            // 약 10m 떨어진 위치 (위도 0.0001도 ≈ 약 11m)
+            val farLocation = Location(latitude = 37.5001, longitude = 127.0000)
+            robot.updateLocation(farLocation)
+            val events = robot.pullDomainEvents()
+
+            assertTrue(events.isEmpty())
+        }
+
+        @Test
+        @DisplayName("도착 이벤트 발행 후 destination이 null로 설정된다")
+        fun `도착 이벤트 발행 후 destination이 null로 설정된다`() {
+            val robot = createRobot(status = RobotStatus.READY)
+            val pickupLocation = Location(latitude = 37.5000, longitude = 127.0000)
+            robot.assignDelivery(DeliveryId(1L), pickupLocation)
+            robot.pullDomainEvents()
+
+            robot.updateLocation(pickupLocation)
+
+            assertNull(robot.destination)
+        }
+
+        @Test
+        @DisplayName("도착 이벤트 발행 후 추가 위치 업데이트에서 중복 발행하지 않는다")
+        fun `도착 이벤트 발행 후 추가 위치 업데이트에서 중복 발행하지 않는다`() {
+            val robot = createRobot(status = RobotStatus.READY)
+            val pickupLocation = Location(latitude = 37.5000, longitude = 127.0000)
+            robot.assignDelivery(DeliveryId(1L), pickupLocation)
+            robot.pullDomainEvents()
+
+            // 첫 번째 도착
+            robot.updateLocation(pickupLocation)
+            val firstEvents = robot.pullDomainEvents()
+            assertEquals(1, firstEvents.size)
+
+            // 두 번째 위치 업데이트 (같은 위치)
+            robot.updateLocation(pickupLocation)
+            val secondEvents = robot.pullDomainEvents()
+
+            assertTrue(secondEvents.isEmpty())
         }
     }
 

@@ -32,6 +32,12 @@ class Robot(
     @Embedded
     @AttributeOverride(name = "value", column = Column(name = "current_delivery_id"))
     var currentDeliveryId: DeliveryId? = null,
+    @Embedded
+    @AttributeOverrides(
+        AttributeOverride(name = "latitude", column = Column(name = "destination_latitude")),
+        AttributeOverride(name = "longitude", column = Column(name = "destination_longitude")),
+    )
+    var destination: Location? = null,
     @Column(nullable = false, updatable = false)
     val createdAt: LocalDateTime = LocalDateTime.now(),
     @Column(nullable = false)
@@ -61,7 +67,10 @@ class Robot(
         registerEvent(RobotEndedDutyEvent(robotId = getRobotId()))
     }
 
-    fun assignDelivery(deliveryId: DeliveryId) {
+    fun assignDelivery(
+        deliveryId: DeliveryId,
+        pickupLocation: Location,
+    ) {
         require(status.isAvailableForDelivery()) {
             "배달을 받을 수 없는 상태입니다. 현재 상태: $status"
         }
@@ -69,9 +78,16 @@ class Robot(
             "이미 다른 배달을 수행 중입니다."
         }
         this.currentDeliveryId = deliveryId
+        this.destination = pickupLocation
         transitionTo(RobotStatus.BUSY)
 
-        registerEvent(RobotDeliveryAssignedEvent(robotId = getRobotId(), deliveryId = deliveryId))
+        registerEvent(
+            RobotDeliveryAssignedEvent(
+                robotId = getRobotId(),
+                deliveryId = deliveryId,
+                pickupLocation = pickupLocation,
+            ),
+        )
     }
 
     fun completeDelivery() {
@@ -99,8 +115,13 @@ class Robot(
         this.location = newLocation
         this.updatedAt = LocalDateTime.now()
 
-        registerEvent(RobotLocationUpdatedEvent(robotId = getRobotId(), location = newLocation))
+        if (destination != null && location.distanceTo(destination!!) <= ARRIVAL_THRESHOLD_METERS) {
+            registerEvent(RobotArrivedAtDestinationEvent(robotId = getRobotId(), destination = destination!!))
+            this.destination = null
+        }
     }
+
+    fun isAvailable(): Boolean = status.isAvailableForDelivery() && currentDeliveryId == null && battery >= 20
 
     private fun transitionTo(newStatus: RobotStatus) {
         require(status.canTransitionTo(newStatus)) {
@@ -110,12 +131,11 @@ class Robot(
         this.updatedAt = LocalDateTime.now()
     }
 
-    fun isAvailable(): Boolean = status.isAvailableForDelivery() && currentDeliveryId == null && battery >= 20
+    companion object {
+        private val log = LoggerFactory.getLogger(javaClass)
+        private const val ARRIVAL_THRESHOLD_METERS = 5.0
+    }
 
     override fun toString(): String =
         "Robot(id=$id, name='$name', status=$status, battery=$battery, location=$location, currentDeliveryId=$currentDeliveryId)"
-
-    companion object {
-        private val log = LoggerFactory.getLogger(javaClass)
-    }
 }

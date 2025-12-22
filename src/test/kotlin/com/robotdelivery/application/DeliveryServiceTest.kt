@@ -272,7 +272,7 @@ class DeliveryServiceTest {
 
             // 배달에 로봇 배정
             delivery.assignRobot(robot.getRobotId())
-            robot.assignDelivery(delivery.getDeliveryId())
+            robot.assignDelivery(delivery.getDeliveryId(), delivery.pickupDestination.location)
 
             // 픽업 완료까지 상태 전이
             delivery.arrived() // ASSIGNED -> PICKUP_ARRIVED
