@@ -23,8 +23,8 @@ class DeliveryAssignmentEventHandler(
     private val log = LoggerFactory.getLogger(javaClass)
 
     @Async
-    @TransactionalEventListener
-    fun handle(event: DeliveryCreatedEvent) {
+    @TransactionalEventListener(fallbackExecution = true)
+    fun dispatch(event: DeliveryCreatedEvent) {
         log.info("DeliveryCreatedEvent 수신: deliveryId={}", event.deliveryId)
 
         val delivery =
@@ -43,8 +43,8 @@ class DeliveryAssignmentEventHandler(
     }
 
     @Async
-    @TransactionalEventListener
-    fun handle(event: RobotBecameAvailableEvent) {
+    @TransactionalEventListener(fallbackExecution = true)
+    fun dispatch(event: RobotBecameAvailableEvent) {
         log.info("RobotBecameAvailableEvent 수신: robotId={}", event.robotId)
 
         val robot =

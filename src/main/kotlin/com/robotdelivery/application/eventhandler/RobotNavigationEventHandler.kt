@@ -14,7 +14,7 @@ class RobotNavigationEventHandler(
     private val log = LoggerFactory.getLogger(javaClass)
 
     @Async
-    @TransactionalEventListener
+    @TransactionalEventListener(fallbackExecution = true)
     fun handle(event: RobotDeliveryAssignedEvent) {
         log.info(
             "RobotDeliveryAssignedEvent 수신: robotId={}, deliveryId={}, pickupLocation={}",
