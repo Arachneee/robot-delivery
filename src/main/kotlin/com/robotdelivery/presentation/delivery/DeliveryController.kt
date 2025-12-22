@@ -2,9 +2,7 @@ package com.robotdelivery.presentation.delivery
 
 import com.robotdelivery.application.DeliveryService
 import com.robotdelivery.domain.common.DeliveryId
-import com.robotdelivery.presentation.delivery.dto.CompleteDeliveryResponse
-import com.robotdelivery.presentation.delivery.dto.CreateDeliveryRequest
-import com.robotdelivery.presentation.delivery.dto.CreateDeliveryResponse
+import com.robotdelivery.presentation.delivery.dto.*
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import java.net.URI
@@ -42,6 +40,21 @@ class DeliveryController(
             .body(response)
     }
 
+    @PostMapping("/{deliveryId}/start")
+    fun startDelivery(
+        @PathVariable deliveryId: Long,
+    ): ResponseEntity<StartDeliveryResponse> {
+        deliveryService.startDelivery(DeliveryId(deliveryId))
+
+        val response =
+            StartDeliveryResponse(
+                deliveryId = deliveryId,
+                message = "배송이 시작되었습니다.",
+            )
+
+        return ResponseEntity.ok(response)
+    }
+
     @PostMapping("/{deliveryId}/complete")
     fun completeDelivery(
         @PathVariable deliveryId: Long,
@@ -52,6 +65,36 @@ class DeliveryController(
             CompleteDeliveryResponse(
                 deliveryId = deliveryId,
                 message = "배달이 완료되었습니다.",
+            )
+
+        return ResponseEntity.ok(response)
+    }
+
+    @PostMapping("/{deliveryId}/complete-return")
+    fun completeReturn(
+        @PathVariable deliveryId: Long,
+    ): ResponseEntity<CompleteReturnResponse> {
+        deliveryService.completeReturn(DeliveryId(deliveryId))
+
+        val response =
+            CompleteReturnResponse(
+                deliveryId = deliveryId,
+                message = "회수가 완료되었습니다.",
+            )
+
+        return ResponseEntity.ok(response)
+    }
+
+    @PostMapping("/{deliveryId}/open-door")
+    fun openDoor(
+        @PathVariable deliveryId: Long,
+    ): ResponseEntity<OpenDoorResponse> {
+        deliveryService.openDoor(DeliveryId(deliveryId))
+
+        val response =
+            OpenDoorResponse(
+                deliveryId = deliveryId,
+                message = "로봇 문이 열렸습니다.",
             )
 
         return ResponseEntity.ok(response)

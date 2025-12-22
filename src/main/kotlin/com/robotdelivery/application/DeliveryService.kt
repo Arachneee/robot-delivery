@@ -1,5 +1,6 @@
 package com.robotdelivery.application
 
+import com.robotdelivery.application.client.RobotClient
 import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.common.DomainEventPublisher
 import com.robotdelivery.domain.common.Location
@@ -16,6 +17,7 @@ class DeliveryService(
     private val deliveryRepository: DeliveryRepository,
     private val robotRepository: RobotRepository,
     private val eventPublisher: DomainEventPublisher,
+    private val robotClient: RobotClient,
 ) {
     fun createDelivery(
         pickupAddress: String,
@@ -66,6 +68,68 @@ class DeliveryService(
                 ?: throw IllegalStateException("로봇을 찾을 수 없습니다: $robotId")
 
         delivery.complete()
+        robot.completeDelivery()
+
+        deliveryRepository.save(delivery)
+        robotRepository.save(robot)
+
+        eventPublisher.publishAll(delivery.pullDomainEvents())
+        eventPublisher.publishAll(robot.pullDomainEvents())
+    }
+
+    fun openDoor(deliveryId: DeliveryId) {
+        val delivery =
+            deliveryRepository.findById(deliveryId)
+                ?: throw IllegalArgumentException("배달을 찾을 수 없습니다: $deliveryId")
+
+        val robotId =
+            delivery.assignedRobotId
+                ?: throw IllegalStateException("배차된 로봇이 없습니다.")
+
+        delivery.openDoor()
+        deliveryRepository.save(delivery)
+
+        robotClient.openDoor(robotId)
+    }
+
+    fun startDelivery(deliveryId: DeliveryId) {
+        val delivery =
+            deliveryRepository.findById(deliveryId)
+                ?: throw IllegalArgumentException("배달을 찾을 수 없습니다: $deliveryId")
+
+        val robotId =
+            delivery.assignedRobotId
+                ?: throw IllegalStateException("배차된 로봇이 없습니다.")
+
+        val robot =
+            robotRepository.findById(robotId)
+                ?: throw IllegalStateException("로봇을 찾을 수 없습니다: $robotId")
+
+        delivery.startDelivery()
+        robot.navigateTo(delivery.deliveryDestination.location)
+
+        deliveryRepository.save(delivery)
+        robotRepository.save(robot)
+
+        eventPublisher.publishAll(delivery.pullDomainEvents())
+
+        robotClient.navigateTo(robotId, delivery.deliveryDestination.location)
+    }
+
+    fun completeReturn(deliveryId: DeliveryId) {
+        val delivery =
+            deliveryRepository.findById(deliveryId)
+                ?: throw IllegalArgumentException("배달을 찾을 수 없습니다: $deliveryId")
+
+        val robotId =
+            delivery.assignedRobotId
+                ?: throw IllegalStateException("배차된 로봇이 없습니다.")
+
+        val robot =
+            robotRepository.findById(robotId)
+                ?: throw IllegalStateException("로봇을 찾을 수 없습니다: $robotId")
+
+        delivery.completeReturn()
         robot.completeDelivery()
 
         deliveryRepository.save(delivery)

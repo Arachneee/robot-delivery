@@ -5,6 +5,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.robotdelivery.application.DeliveryService
 import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.presentation.delivery.dto.CreateDeliveryRequest
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -199,6 +200,74 @@ class DeliveryControllerTest {
                         fieldWithPath("deliveryId")
                             .type(JsonFieldType.NUMBER)
                             .description("완료된 배달 ID"),
+                        fieldWithPath("message")
+                            .type(JsonFieldType.STRING)
+                            .description("응답 메시지"),
+                    ),
+                ),
+            )
+    }
+
+    @Test
+    @DisplayName("배송 시작 API - 성공")
+    fun `배송 시작 API 성공`() {
+        // given
+        val deliveryId = 1L
+        doNothing().whenever(deliveryService).startDelivery(DeliveryId(deliveryId))
+
+        // when & then
+        mockMvc
+            .perform(
+                post("/api/deliveries/{deliveryId}/start", deliveryId),
+            ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.deliveryId").value(deliveryId))
+            .andExpect(jsonPath("$.message").value("배송이 시작되었습니다."))
+            .andDo(
+                document(
+                    "delivery-start",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    pathParameters(
+                        parameterWithName("deliveryId").description("배달 ID"),
+                    ),
+                    responseFields(
+                        fieldWithPath("deliveryId")
+                            .type(JsonFieldType.NUMBER)
+                            .description("배송이 시작된 배달 ID"),
+                        fieldWithPath("message")
+                            .type(JsonFieldType.STRING)
+                            .description("응답 메시지"),
+                    ),
+                ),
+            )
+    }
+
+    @Test
+    @DisplayName("회수 완료 API - 성공")
+    fun `회수 완료 API 성공`() {
+        // given
+        val deliveryId = 1L
+        doNothing().whenever(deliveryService).completeReturn(DeliveryId(deliveryId))
+
+        // when & then
+        mockMvc
+            .perform(
+                post("/api/deliveries/{deliveryId}/complete-return", deliveryId),
+            ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.deliveryId").value(deliveryId))
+            .andExpect(jsonPath("$.message").value("회수가 완료되었습니다."))
+            .andDo(
+                document(
+                    "delivery-complete-return",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    pathParameters(
+                        parameterWithName("deliveryId").description("배달 ID"),
+                    ),
+                    responseFields(
+                        fieldWithPath("deliveryId")
+                            .type(JsonFieldType.NUMBER)
+                            .description("회수 완료된 배달 ID"),
                         fieldWithPath("message")
                             .type(JsonFieldType.STRING)
                             .description("응답 메시지"),
