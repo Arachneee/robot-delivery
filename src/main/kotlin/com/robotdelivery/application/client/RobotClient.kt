@@ -9,5 +9,5 @@ interface RobotClient {
         destination: Location,
     )
 
-    fun openLid(robotId: RobotId)
+    fun openDoor(robotId: RobotId)
 }

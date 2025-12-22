@@ -35,7 +35,7 @@ class RobotSimulator(
         )
     }
 
-    override fun openLid(robotId: RobotId) {
+    override fun openDoor(robotId: RobotId) {
         log.info("로봇 뚜껑 열기 시뮬레이션: robotId={}", robotId)
         // 뚜껑 열기는 즉시 완료로 처리
     }
