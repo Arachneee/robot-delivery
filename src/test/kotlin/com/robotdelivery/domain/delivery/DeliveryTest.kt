@@ -4,8 +4,8 @@ import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.common.RobotId
 import com.robotdelivery.domain.delivery.event.DeliveryCompletedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryCreatedEvent
-import com.robotdelivery.domain.delivery.event.DeliveryStartedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryRobotAssignedEvent
+import com.robotdelivery.domain.delivery.event.DeliveryStartedEvent
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -20,26 +20,27 @@ class DeliveryTest {
 
     @BeforeEach
     fun setUp() {
-        pickupDestination = Destination(
-            address = "서울시 중구 세종대로 110",
-            addressDetail = "시청역 1번 출구",
-            location = Location(latitude = 37.5665, longitude = 126.9780)
-        )
-        deliveryDestination = Destination(
-            address = "서울시 강남구 테헤란로 1",
-            addressDetail = "강남역 2번 출구",
-            location = Location(latitude = 37.4979, longitude = 127.0276)
-        )
+        pickupDestination =
+            Destination(
+                address = "서울시 중구 세종대로 110",
+                addressDetail = "시청역 1번 출구",
+                location = Location(latitude = 37.5665, longitude = 126.9780),
+            )
+        deliveryDestination =
+            Destination(
+                address = "서울시 강남구 테헤란로 1",
+                addressDetail = "강남역 2번 출구",
+                location = Location(latitude = 37.4979, longitude = 127.0276),
+            )
     }
 
-    private fun createDelivery(id: Long = 1L): Delivery {
-        return Delivery(
+    private fun createDelivery(id: Long = 1L): Delivery =
+        Delivery(
             id = id,
             pickupDestination = pickupDestination,
             deliveryDestination = deliveryDestination,
-            phoneNumber = "010-1234-5678"
+            phoneNumber = "010-1234-5678",
         )
-    }
 
     @Nested
     @DisplayName("생성 테스트")
@@ -56,12 +57,13 @@ class DeliveryTest {
         @Test
         @DisplayName("새 배달이 persist되면 DeliveryCreatedEvent가 발생한다")
         fun `새 배달이 persist되면 DeliveryCreatedEvent가 발생한다`() {
-            val delivery = Delivery(
-                id = 0L,  // 새로운 엔티티
-                pickupDestination = pickupDestination,
-                deliveryDestination = deliveryDestination,
-                phoneNumber = "010-1234-5678"
-            )
+            val delivery =
+                Delivery(
+                    id = 0L, // 새로운 엔티티
+                    pickupDestination = pickupDestination,
+                    deliveryDestination = deliveryDestination,
+                    phoneNumber = "010-1234-5678",
+                )
 
             // JPA @PostPersist 콜백 시뮬레이션
             delivery.onPostPersist()
@@ -74,12 +76,13 @@ class DeliveryTest {
         @Test
         @DisplayName("onPostPersist는 한 번만 이벤트를 등록한다")
         fun `onPostPersist는 한 번만 이벤트를 등록한다`() {
-            val delivery = Delivery(
-                id = 0L,
-                pickupDestination = pickupDestination,
-                deliveryDestination = deliveryDestination,
-                phoneNumber = "010-1234-5678"
-            )
+            val delivery =
+                Delivery(
+                    id = 0L,
+                    pickupDestination = pickupDestination,
+                    deliveryDestination = deliveryDestination,
+                    phoneNumber = "010-1234-5678",
+                )
 
             delivery.onPostPersist()
             delivery.onPostPersist() // 두 번째 호출
@@ -134,9 +137,10 @@ class DeliveryTest {
             val delivery = createDelivery()
             delivery.assignRobot(RobotId(1L))
 
-            val exception = assertThrows<IllegalArgumentException> {
-                delivery.assignRobot(RobotId(2L))
-            }
+            val exception =
+                assertThrows<IllegalArgumentException> {
+                    delivery.assignRobot(RobotId(2L))
+                }
             assertTrue(exception.message!!.contains("대기 상태의 배달만 로봇 배차가 가능합니다"))
         }
     }
@@ -160,8 +164,8 @@ class DeliveryTest {
         fun `DELIVERING 상태에서 도착하면 DELIVERY_ARRIVED가 된다`() {
             val delivery = createDelivery()
             delivery.assignRobot(RobotId(1L))
-            delivery.arrived()   // PICKUP_ARRIVED
-            delivery.openDoor()  // PICKING_UP
+            delivery.arrived() // PICKUP_ARRIVED
+            delivery.openDoor() // PICKING_UP
             delivery.startDelivery() // DELIVERING
 
             delivery.arrived()
@@ -174,9 +178,10 @@ class DeliveryTest {
         fun `PENDING 상태에서 도착 처리하면 예외가 발생한다`() {
             val delivery = createDelivery()
 
-            val exception = assertThrows<IllegalStateException> {
-                delivery.arrived()
-            }
+            val exception =
+                assertThrows<IllegalStateException> {
+                    delivery.arrived()
+                }
             assertTrue(exception.message!!.contains("도착 처리할 수 없는 상태입니다"))
         }
     }
@@ -216,9 +221,10 @@ class DeliveryTest {
         fun `PENDING 상태에서 문을 열면 예외가 발생한다`() {
             val delivery = createDelivery()
 
-            val exception = assertThrows<IllegalStateException> {
-                delivery.openDoor()
-            }
+            val exception =
+                assertThrows<IllegalStateException> {
+                    delivery.openDoor()
+                }
             assertTrue(exception.message!!.contains("문을 열 수 없는 상태입니다"))
         }
     }
@@ -261,9 +267,10 @@ class DeliveryTest {
             val delivery = createDelivery()
             delivery.assignRobot(RobotId(1L))
 
-            val exception = assertThrows<IllegalArgumentException> {
-                delivery.startDelivery()
-            }
+            val exception =
+                assertThrows<IllegalArgumentException> {
+                    delivery.startDelivery()
+                }
             assertTrue(exception.message!!.contains("픽업 중 상태에서만 배송을 시작할 수 있습니다"))
         }
     }
@@ -290,7 +297,6 @@ class DeliveryTest {
             delivery.complete()
 
             assertEquals(DeliveryStatus.COMPLETED, delivery.status)
-            assertNotNull(delivery.completedAt)
         }
 
         @Test
@@ -315,9 +321,10 @@ class DeliveryTest {
             delivery.openDoor()
             delivery.startDelivery()
 
-            val exception = assertThrows<IllegalArgumentException> {
-                delivery.complete()
-            }
+            val exception =
+                assertThrows<IllegalArgumentException> {
+                    delivery.complete()
+                }
             assertTrue(exception.message!!.contains("배달 완료 처리할 수 없는 상태입니다"))
         }
     }
@@ -333,7 +340,6 @@ class DeliveryTest {
             delivery.cancel()
 
             assertEquals(DeliveryStatus.CANCELED, delivery.status)
-            assertNotNull(delivery.completedAt)
         }
 
         @Test
@@ -359,7 +365,6 @@ class DeliveryTest {
             delivery.cancel()
 
             assertEquals(DeliveryStatus.RETURNING, delivery.status)
-            assertNull(delivery.completedAt)
         }
 
         @Test
@@ -374,9 +379,10 @@ class DeliveryTest {
             delivery.openDoor()
             delivery.complete()
 
-            val exception = assertThrows<IllegalStateException> {
-                delivery.cancel()
-            }
+            val exception =
+                assertThrows<IllegalStateException> {
+                    delivery.cancel()
+                }
             assertTrue(exception.message!!.contains("취소할 수 없는 상태입니다"))
         }
     }
@@ -475,4 +481,3 @@ class DeliveryTest {
         }
     }
 }
-

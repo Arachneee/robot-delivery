@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package com.robotdelivery.domain.delivery
 
 import com.robotdelivery.domain.common.AggregateRoot
@@ -5,12 +7,17 @@ import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.common.RobotId
 import com.robotdelivery.domain.delivery.event.DeliveryCompletedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryCreatedEvent
-import com.robotdelivery.domain.delivery.event.DeliveryStartedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryRobotAssignedEvent
+import com.robotdelivery.domain.delivery.event.DeliveryStartedEvent
 import jakarta.persistence.*
+import org.springframework.data.annotation.CreatedDate
+import org.springframework.data.annotation.LastModifiedDate
+import org.springframework.data.jpa.domain.support.AuditingEntityListener
 import java.time.LocalDateTime
+import kotlin.jvm.Transient
 
 @Entity
+@EntityListeners(AuditingEntityListener::class)
 @Table(name = "deliveries")
 class Delivery(
     @Id
@@ -41,12 +48,12 @@ class Delivery(
     @Embedded
     @AttributeOverride(name = "value", column = Column(name = "assigned_robot_id"))
     var assignedRobotId: RobotId? = null,
+    @CreatedDate
     @Column(nullable = false, updatable = false)
     val createdAt: LocalDateTime = LocalDateTime.now(),
+    @LastModifiedDate
     @Column(nullable = false)
     var updatedAt: LocalDateTime = LocalDateTime.now(),
-    @Column
-    var completedAt: LocalDateTime? = null,
 ) : AggregateRoot() {
     @Transient
     private var isNew: Boolean = (id == 0L)
@@ -81,20 +88,6 @@ class Delivery(
         )
     }
 
-    fun startDelivery() {
-        require(status == DeliveryStatus.PICKING_UP) {
-            "픽업 중 상태에서만 배송을 시작할 수 있습니다. 현재 상태: $status"
-        }
-        transitionTo(DeliveryStatus.DELIVERING)
-
-        registerEvent(
-            DeliveryStartedEvent(
-                deliveryId = getDeliveryId(),
-                robotId = assignedRobotId!!,
-            ),
-        )
-    }
-
     fun arrived() {
         val nextStatus =
             when (status) {
@@ -117,12 +110,25 @@ class Delivery(
         transitionTo(nextStatus)
     }
 
+    fun startDelivery() {
+        require(status == DeliveryStatus.PICKING_UP) {
+            "픽업 중 상태에서만 배송을 시작할 수 있습니다. 현재 상태: $status"
+        }
+        transitionTo(DeliveryStatus.DELIVERING)
+
+        registerEvent(
+            DeliveryStartedEvent(
+                deliveryId = getDeliveryId(),
+                robotId = assignedRobotId!!,
+            ),
+        )
+    }
+
     fun complete() {
         require(status == DeliveryStatus.DROPPING_OFF) {
             "배달 완료 처리할 수 없는 상태입니다. 현재 상태: $status"
         }
         transitionTo(DeliveryStatus.COMPLETED)
-        this.completedAt = LocalDateTime.now()
 
         registerEvent(
             DeliveryCompletedEvent(
@@ -137,7 +143,6 @@ class Delivery(
             "회수 완료 처리할 수 없는 상태입니다. 현재 상태: $status"
         }
         transitionTo(DeliveryStatus.RETURN_COMPLETED)
-        this.completedAt = LocalDateTime.now()
     }
 
     fun cancel() {
@@ -148,9 +153,6 @@ class Delivery(
                 else -> throw IllegalStateException("취소할 수 없는 상태입니다. 현재 상태: $status")
             }
         transitionTo(nextStatus)
-        if (nextStatus == DeliveryStatus.CANCELED) {
-            this.completedAt = LocalDateTime.now()
-        }
     }
 
     private fun transitionTo(newStatus: DeliveryStatus) {
@@ -158,7 +160,6 @@ class Delivery(
             "잘못된 상태 전이입니다: $status -> $newStatus"
         }
         this.status = newStatus
-        this.updatedAt = LocalDateTime.now()
     }
 
     fun isActive(): Boolean =
