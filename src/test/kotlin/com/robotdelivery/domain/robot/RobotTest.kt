@@ -155,8 +155,8 @@ class RobotTest {
         }
 
         @Test
-        @DisplayName("배달 할당 시 RobotDeliveryAssignedEvent가 발생한다")
-        fun `배달 할당 시 RobotDeliveryAssignedEvent가 발생한다`() {
+        @DisplayName("배달 할당 시 RobotDeliveryAssignedEvent와 RobotDestinationChangedEvent가 발생한다")
+        fun `배달 할당 시 RobotDeliveryAssignedEvent와 RobotDestinationChangedEvent가 발생한다`() {
             val robot = createRobot(status = RobotStatus.READY)
             val deliveryId = DeliveryId(1L)
             val pickupLocation = Location(latitude = 37.5665, longitude = 126.9780)
@@ -164,10 +164,11 @@ class RobotTest {
             robot.assignDelivery(deliveryId, pickupLocation)
             val events = robot.pullDomainEvents()
 
-            assertEquals(1, events.size)
-            val event = events[0] as RobotDeliveryAssignedEvent
-            assertEquals(deliveryId, event.deliveryId)
-            assertEquals(pickupLocation, event.pickupLocation)
+            assertEquals(2, events.size)
+            val destinationChangedEvent = events[0] as RobotDestinationChangedEvent
+            assertEquals(pickupLocation, destinationChangedEvent.destination)
+            val assignedEvent = events[1] as RobotDeliveryAssignedEvent
+            assertEquals(deliveryId, assignedEvent.deliveryId)
         }
 
         @Test
@@ -447,6 +448,62 @@ class RobotTest {
             val robot = createRobot(status = RobotStatus.READY, currentDeliveryId = DeliveryId(1L))
 
             assertFalse(robot.isAvailable())
+        }
+    }
+
+    @Nested
+    @DisplayName("목적지 이동 테스트")
+    inner class NavigateToTest {
+        @Test
+        @DisplayName("BUSY 상태에서 목적지를 설정할 수 있다")
+        fun `BUSY 상태에서 목적지를 설정할 수 있다`() {
+            val robot = createRobot(status = RobotStatus.BUSY, currentDeliveryId = DeliveryId(1L))
+            val destination = Location(latitude = 37.5000, longitude = 127.0000)
+
+            robot.navigateTo(destination)
+
+            assertEquals(destination, robot.destination)
+        }
+
+        @Test
+        @DisplayName("목적지 설정 시 RobotDestinationChangedEvent가 발생한다")
+        fun `목적지 설정 시 RobotDestinationChangedEvent가 발생한다`() {
+            val robot = createRobot(status = RobotStatus.BUSY, currentDeliveryId = DeliveryId(1L))
+            val destination = Location(latitude = 37.5000, longitude = 127.0000)
+
+            robot.navigateTo(destination)
+            val events = robot.pullDomainEvents()
+
+            assertEquals(1, events.size)
+            val event = events[0] as RobotDestinationChangedEvent
+            assertEquals(robot.getRobotId(), event.robotId)
+            assertEquals(destination, event.destination)
+        }
+
+        @Test
+        @DisplayName("READY 상태에서 목적지 설정하면 예외가 발생한다")
+        fun `READY 상태에서 목적지 설정하면 예외가 발생한다`() {
+            val robot = createRobot(status = RobotStatus.READY)
+            val destination = Location(latitude = 37.5000, longitude = 127.0000)
+
+            val exception =
+                assertThrows<IllegalArgumentException> {
+                    robot.navigateTo(destination)
+                }
+            assertTrue(exception.message!!.contains("배달 수행 중이 아닙니다"))
+        }
+
+        @Test
+        @DisplayName("OFF_DUTY 상태에서 목적지 설정하면 예외가 발생한다")
+        fun `OFF_DUTY 상태에서 목적지 설정하면 예외가 발생한다`() {
+            val robot = createRobot()
+            val destination = Location(latitude = 37.5000, longitude = 127.0000)
+
+            val exception =
+                assertThrows<IllegalArgumentException> {
+                    robot.navigateTo(destination)
+                }
+            assertTrue(exception.message!!.contains("배달 수행 중이 아닙니다"))
         }
     }
 }

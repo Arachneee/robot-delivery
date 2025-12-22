@@ -7,9 +7,13 @@ import com.robotdelivery.domain.common.RobotId
 import com.robotdelivery.domain.robot.event.*
 import jakarta.persistence.*
 import org.slf4j.LoggerFactory
+import org.springframework.data.annotation.CreatedDate
+import org.springframework.data.annotation.LastModifiedDate
+import org.springframework.data.jpa.domain.support.AuditingEntityListener
 import java.time.LocalDateTime
 
 @Entity
+@EntityListeners(AuditingEntityListener::class)
 @Table(name = "robots")
 class Robot(
     @Id
@@ -38,8 +42,10 @@ class Robot(
         AttributeOverride(name = "longitude", column = Column(name = "destination_longitude")),
     )
     var destination: Location? = null,
+    @CreatedDate
     @Column(nullable = false, updatable = false)
     val createdAt: LocalDateTime = LocalDateTime.now(),
+    @LastModifiedDate
     @Column(nullable = false)
     var updatedAt: LocalDateTime = LocalDateTime.now(),
 ) : AggregateRoot() {
@@ -78,14 +84,13 @@ class Robot(
             "이미 다른 배달을 수행 중입니다."
         }
         this.currentDeliveryId = deliveryId
-        this.destination = pickupLocation
         transitionTo(RobotStatus.BUSY)
+        navigateTo(pickupLocation)
 
         registerEvent(
             RobotDeliveryAssignedEvent(
                 robotId = getRobotId(),
                 deliveryId = deliveryId,
-                pickupLocation = pickupLocation,
             ),
         )
     }
@@ -108,17 +113,24 @@ class Robot(
             "배터리는 0에서 100 사이여야 합니다."
         }
         this.battery = newBattery
-        this.updatedAt = LocalDateTime.now()
     }
 
     fun updateLocation(newLocation: Location) {
         this.location = newLocation
-        this.updatedAt = LocalDateTime.now()
 
         if (destination != null && location.distanceTo(destination!!) <= ARRIVAL_THRESHOLD_METERS) {
             registerEvent(RobotArrivedAtDestinationEvent(robotId = getRobotId(), destination = destination!!))
             this.destination = null
         }
+    }
+
+    fun navigateTo(newDestination: Location) {
+        require(status == RobotStatus.BUSY) {
+            "배달 수행 중이 아닙니다. 현재 상태: $status"
+        }
+        this.destination = newDestination
+
+        registerEvent(RobotDestinationChangedEvent(robotId = getRobotId(), destination = newDestination))
     }
 
     fun isAvailable(): Boolean = status.isAvailableForDelivery() && currentDeliveryId == null && battery >= 20
@@ -128,7 +140,6 @@ class Robot(
             "잘못된 상태 전이입니다: $status -> $newStatus"
         }
         this.status = newStatus
-        this.updatedAt = LocalDateTime.now()
     }
 
     companion object {

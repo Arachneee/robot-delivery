@@ -1,7 +1,7 @@
 package com.robotdelivery.application.eventhandler
 
 import com.robotdelivery.application.client.RobotClient
-import com.robotdelivery.domain.robot.event.RobotDeliveryAssignedEvent
+import com.robotdelivery.domain.robot.event.RobotDestinationChangedEvent
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
@@ -15,20 +15,19 @@ class RobotNavigationEventHandler(
 
     @Async
     @TransactionalEventListener(fallbackExecution = true)
-    fun handle(event: RobotDeliveryAssignedEvent) {
+    fun handle(event: RobotDestinationChangedEvent) {
         log.info(
-            "RobotDeliveryAssignedEvent 수신: robotId={}, deliveryId={}, pickupLocation={}",
+            "RobotDestinationChangedEvent 수신: robotId={}, destination={}",
             event.robotId,
-            event.deliveryId,
-            event.pickupLocation,
+            event.destination,
         )
 
-        robotClient.navigateTo(event.robotId, event.pickupLocation)
+        robotClient.navigateTo(event.robotId, event.destination)
 
         log.info(
             "로봇 이동 명령 전송 완료: robotId={}, destination={}",
             event.robotId,
-            event.pickupLocation,
+            event.destination,
         )
     }
 }
