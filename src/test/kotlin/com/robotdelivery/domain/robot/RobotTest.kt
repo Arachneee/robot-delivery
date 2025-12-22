@@ -72,16 +72,15 @@ class RobotTest {
         }
 
         @Test
-        @DisplayName("출근 시 RobotStartedDutyEvent와 RobotBecameAvailableEvent가 발생한다")
-        fun `출근 시 RobotStartedDutyEvent와 RobotBecameAvailableEvent가 발생한다`() {
+        @DisplayName("출근 시 RobotBecameAvailableEvent가 발생한다")
+        fun `출근 시 RobotBecameAvailableEvent가 발생한다`() {
             val robot = createRobot()
 
             robot.startDuty()
             val events = robot.pullDomainEvents()
 
-            assertEquals(2, events.size)
-            assertTrue(events[0] is RobotStartedDutyEvent)
-            assertTrue(events[1] is RobotBecameAvailableEvent)
+            assertEquals(1, events.size)
+            assertTrue(events[0] is RobotBecameAvailableEvent)
         }
     }
 
@@ -99,15 +98,14 @@ class RobotTest {
         }
 
         @Test
-        @DisplayName("퇴근 시 RobotEndedDutyEvent가 발생한다")
-        fun `퇴근 시 RobotEndedDutyEvent가 발생한다`() {
+        @DisplayName("퇴근 시 이벤트가 발생하지 않는다")
+        fun `퇴근 시 이벤트가 발생하지 않는다`() {
             val robot = createRobot(status = RobotStatus.READY)
 
             robot.endDuty()
             val events = robot.pullDomainEvents()
 
-            assertEquals(1, events.size)
-            assertTrue(events[0] is RobotEndedDutyEvent)
+            assertTrue(events.isEmpty())
         }
 
         @Test
@@ -155,8 +153,8 @@ class RobotTest {
         }
 
         @Test
-        @DisplayName("배달 할당 시 RobotDeliveryAssignedEvent와 RobotDestinationChangedEvent가 발생한다")
-        fun `배달 할당 시 RobotDeliveryAssignedEvent와 RobotDestinationChangedEvent가 발생한다`() {
+        @DisplayName("배달 할당 시 RobotDestinationChangedEvent가 발생한다")
+        fun `배달 할당 시 RobotDestinationChangedEvent가 발생한다`() {
             val robot = createRobot(status = RobotStatus.READY)
             val deliveryId = DeliveryId(1L)
             val pickupLocation = Location(latitude = 37.5665, longitude = 126.9780)
@@ -164,11 +162,9 @@ class RobotTest {
             robot.assignDelivery(deliveryId, pickupLocation)
             val events = robot.pullDomainEvents()
 
-            assertEquals(2, events.size)
+            assertEquals(1, events.size)
             val destinationChangedEvent = events[0] as RobotDestinationChangedEvent
             assertEquals(pickupLocation, destinationChangedEvent.destination)
-            val assignedEvent = events[1] as RobotDeliveryAssignedEvent
-            assertEquals(deliveryId, assignedEvent.deliveryId)
         }
 
         @Test

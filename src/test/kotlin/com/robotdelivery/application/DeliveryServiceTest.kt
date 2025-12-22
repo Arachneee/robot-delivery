@@ -1,22 +1,16 @@
 package com.robotdelivery.application
 
 import com.robotdelivery.application.client.RobotClient
-import com.robotdelivery.domain.common.DomainEvent
-import com.robotdelivery.domain.common.DomainEventPublisher
+import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.common.RobotId
 import com.robotdelivery.domain.delivery.Delivery
 import com.robotdelivery.domain.delivery.DeliveryRepository
 import com.robotdelivery.domain.delivery.DeliveryStatus
 import com.robotdelivery.domain.delivery.Destination
-import com.robotdelivery.domain.delivery.event.DeliveryCompletedEvent
-import com.robotdelivery.domain.delivery.event.DeliveryCreatedEvent
-import com.robotdelivery.domain.delivery.event.DeliveryStartedEvent
 import com.robotdelivery.domain.robot.Robot
 import com.robotdelivery.domain.robot.RobotRepository
 import com.robotdelivery.domain.robot.RobotStatus
-import com.robotdelivery.domain.robot.event.RobotBecameAvailableEvent
-import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
@@ -26,61 +20,31 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.ActiveProfiles
-import org.springframework.transaction.annotation.Transactional
+import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.Mock
+import org.mockito.junit.jupiter.MockitoExtension
+import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 
-@SpringBootTest
-@ActiveProfiles("test")
-@Transactional
+@ExtendWith(MockitoExtension::class)
 @DisplayName("DeliveryService 테스트")
 class DeliveryServiceTest {
-    @Autowired
+    @Mock
     private lateinit var deliveryRepository: DeliveryRepository
 
-    @Autowired
+    @Mock
     private lateinit var robotRepository: RobotRepository
 
+    @Mock
+    private lateinit var robotClient: RobotClient
+
     private lateinit var deliveryService: DeliveryService
-    private lateinit var publishedEvents: MutableList<DomainEvent>
-    private lateinit var fakeEventPublisher: DomainEventPublisher
-    private lateinit var fakeRobotClient: FakeRobotClient
-
-    class FakeRobotClient : RobotClient {
-        val navigatedRobots: MutableList<Pair<RobotId, Location>> = mutableListOf()
-        val openedDoorRobots: MutableList<RobotId> = mutableListOf()
-
-        override fun navigateTo(
-            robotId: RobotId,
-            destination: Location,
-        ) {
-            navigatedRobots.add(Pair(robotId, destination))
-        }
-
-        override fun openDoor(robotId: RobotId) {
-            openedDoorRobots.add(robotId)
-        }
-
-        fun reset() {
-            navigatedRobots.clear()
-            openedDoorRobots.clear()
-        }
-    }
 
     @BeforeEach
     fun setUp() {
-        deliveryRepository.deleteAll()
-        robotRepository.deleteAll()
-        publishedEvents = mutableListOf()
-        fakeEventPublisher =
-            object : DomainEventPublisher {
-                override fun publishAll(events: List<DomainEvent>) {
-                    publishedEvents.addAll(events)
-                }
-            }
-        fakeRobotClient = FakeRobotClient()
-        deliveryService = DeliveryService(deliveryRepository, robotRepository, fakeEventPublisher, fakeRobotClient)
+        deliveryService = DeliveryService(deliveryRepository, robotRepository, robotClient)
     }
 
     @Nested
@@ -89,6 +53,9 @@ class DeliveryServiceTest {
         @Test
         @DisplayName("배달을 성공적으로 생성한다")
         fun `배달을 성공적으로 생성한다`() {
+            val savedDelivery = createDelivery(1L)
+            whenever(deliveryRepository.saveAndFlush(any<Delivery>())).thenReturn(savedDelivery)
+
             val deliveryId =
                 deliveryService.createDelivery(
                     pickupAddress = "서울시 중구 세종대로 110",
@@ -103,121 +70,116 @@ class DeliveryServiceTest {
                 )
 
             assertNotNull(deliveryId)
-            val savedDelivery = deliveryRepository.findById(deliveryId)
-            assertNotNull(savedDelivery)
+            assertEquals(DeliveryId(1L), deliveryId)
         }
 
         @Test
         @DisplayName("생성된 배달은 PENDING 상태이다")
         fun `생성된 배달은 PENDING 상태이다`() {
-            val deliveryId =
-                deliveryService.createDelivery(
-                    pickupAddress = "서울시 중구 세종대로 110",
-                    pickupAddressDetail = "시청역 1번 출구",
-                    pickupLatitude = 37.5665,
-                    pickupLongitude = 126.9780,
-                    deliveryAddress = "서울시 강남구 테헤란로 1",
-                    deliveryAddressDetail = "2층",
-                    deliveryLatitude = 37.4979,
-                    deliveryLongitude = 127.0276,
-                    phoneNumber = "010-1234-5678",
-                )
+            val deliveryCaptor = argumentCaptor<Delivery>()
+            val savedDelivery = createDelivery(1L)
+            whenever(deliveryRepository.saveAndFlush(any<Delivery>())).thenReturn(savedDelivery)
 
-            val savedDelivery = deliveryRepository.findById(deliveryId)!!
-            assertEquals(DeliveryStatus.PENDING, savedDelivery.status)
+            deliveryService.createDelivery(
+                pickupAddress = "서울시 중구 세종대로 110",
+                pickupAddressDetail = "시청역 1번 출구",
+                pickupLatitude = 37.5665,
+                pickupLongitude = 126.9780,
+                deliveryAddress = "서울시 강남구 테헤란로 1",
+                deliveryAddressDetail = "2층",
+                deliveryLatitude = 37.4979,
+                deliveryLongitude = 127.0276,
+                phoneNumber = "010-1234-5678",
+            )
+
+            verify(deliveryRepository).saveAndFlush(deliveryCaptor.capture())
+            assertEquals(DeliveryStatus.PENDING, deliveryCaptor.firstValue.status)
         }
 
         @Test
         @DisplayName("픽업 목적지 정보가 올바르게 저장된다")
         fun `픽업 목적지 정보가 올바르게 저장된다`() {
-            val deliveryId =
-                deliveryService.createDelivery(
-                    pickupAddress = "서울시 중구 세종대로 110",
-                    pickupAddressDetail = "시청역 1번 출구",
-                    pickupLatitude = 37.5665,
-                    pickupLongitude = 126.9780,
-                    deliveryAddress = "서울시 강남구 테헤란로 1",
-                    deliveryAddressDetail = "2층",
-                    deliveryLatitude = 37.4979,
-                    deliveryLongitude = 127.0276,
-                    phoneNumber = "010-1234-5678",
-                )
+            val deliveryCaptor = argumentCaptor<Delivery>()
+            val savedDelivery = createDelivery(1L)
+            whenever(deliveryRepository.saveAndFlush(any<Delivery>())).thenReturn(savedDelivery)
 
-            val savedDelivery = deliveryRepository.findById(deliveryId)!!
-            assertEquals("서울시 중구 세종대로 110", savedDelivery.pickupDestination.address)
-            assertEquals("시청역 1번 출구", savedDelivery.pickupDestination.addressDetail)
-            assertEquals(37.5665, savedDelivery.pickupDestination.location.latitude)
-            assertEquals(126.9780, savedDelivery.pickupDestination.location.longitude)
+            deliveryService.createDelivery(
+                pickupAddress = "서울시 중구 세종대로 110",
+                pickupAddressDetail = "시청역 1번 출구",
+                pickupLatitude = 37.5665,
+                pickupLongitude = 126.9780,
+                deliveryAddress = "서울시 강남구 테헤란로 1",
+                deliveryAddressDetail = "2층",
+                deliveryLatitude = 37.4979,
+                deliveryLongitude = 127.0276,
+                phoneNumber = "010-1234-5678",
+            )
+
+            verify(deliveryRepository).saveAndFlush(deliveryCaptor.capture())
+            val capturedDelivery = deliveryCaptor.firstValue
+            assertEquals("서울시 중구 세종대로 110", capturedDelivery.pickupDestination.address)
+            assertEquals("시청역 1번 출구", capturedDelivery.pickupDestination.addressDetail)
+            assertEquals(37.5665, capturedDelivery.pickupDestination.location.latitude)
+            assertEquals(126.9780, capturedDelivery.pickupDestination.location.longitude)
         }
 
         @Test
         @DisplayName("배송 목적지 정보가 올바르게 저장된다")
         fun `배송 목적지 정보가 올바르게 저장된다`() {
-            val deliveryId =
-                deliveryService.createDelivery(
-                    pickupAddress = "서울시 중구 세종대로 110",
-                    pickupAddressDetail = "시청역 1번 출구",
-                    pickupLatitude = 37.5665,
-                    pickupLongitude = 126.9780,
-                    deliveryAddress = "서울시 강남구 테헤란로 1",
-                    deliveryAddressDetail = "2층",
-                    deliveryLatitude = 37.4979,
-                    deliveryLongitude = 127.0276,
-                    phoneNumber = "010-1234-5678",
-                )
+            val deliveryCaptor = argumentCaptor<Delivery>()
+            val savedDelivery = createDelivery(1L)
+            whenever(deliveryRepository.saveAndFlush(any<Delivery>())).thenReturn(savedDelivery)
 
-            val savedDelivery = deliveryRepository.findById(deliveryId)!!
-            assertEquals("서울시 강남구 테헤란로 1", savedDelivery.deliveryDestination.address)
-            assertEquals("2층", savedDelivery.deliveryDestination.addressDetail)
-            assertEquals(37.4979, savedDelivery.deliveryDestination.location.latitude)
-            assertEquals(127.0276, savedDelivery.deliveryDestination.location.longitude)
+            deliveryService.createDelivery(
+                pickupAddress = "서울시 중구 세종대로 110",
+                pickupAddressDetail = "시청역 1번 출구",
+                pickupLatitude = 37.5665,
+                pickupLongitude = 126.9780,
+                deliveryAddress = "서울시 강남구 테헤란로 1",
+                deliveryAddressDetail = "2층",
+                deliveryLatitude = 37.4979,
+                deliveryLongitude = 127.0276,
+                phoneNumber = "010-1234-5678",
+            )
+
+            verify(deliveryRepository).saveAndFlush(deliveryCaptor.capture())
+            val capturedDelivery = deliveryCaptor.firstValue
+            assertEquals("서울시 강남구 테헤란로 1", capturedDelivery.deliveryDestination.address)
+            assertEquals("2층", capturedDelivery.deliveryDestination.addressDetail)
+            assertEquals(37.4979, capturedDelivery.deliveryDestination.location.latitude)
+            assertEquals(127.0276, capturedDelivery.deliveryDestination.location.longitude)
         }
 
         @Test
         @DisplayName("전화번호가 올바르게 저장된다")
         fun `전화번호가 올바르게 저장된다`() {
-            val deliveryId =
-                deliveryService.createDelivery(
-                    pickupAddress = "서울시 중구 세종대로 110",
-                    pickupAddressDetail = null,
-                    pickupLatitude = 37.5665,
-                    pickupLongitude = 126.9780,
-                    deliveryAddress = "서울시 강남구 테헤란로 1",
-                    deliveryAddressDetail = null,
-                    deliveryLatitude = 37.4979,
-                    deliveryLongitude = 127.0276,
-                    phoneNumber = "010-9999-8888",
-                )
+            val deliveryCaptor = argumentCaptor<Delivery>()
+            val savedDelivery = createDelivery(1L)
+            whenever(deliveryRepository.saveAndFlush(any<Delivery>())).thenReturn(savedDelivery)
 
-            val savedDelivery = deliveryRepository.findById(deliveryId)!!
-            assertEquals("010-9999-8888", savedDelivery.phoneNumber)
+            deliveryService.createDelivery(
+                pickupAddress = "서울시 중구 세종대로 110",
+                pickupAddressDetail = null,
+                pickupLatitude = 37.5665,
+                pickupLongitude = 126.9780,
+                deliveryAddress = "서울시 강남구 테헤란로 1",
+                deliveryAddressDetail = null,
+                deliveryLatitude = 37.4979,
+                deliveryLongitude = 127.0276,
+                phoneNumber = "010-9999-8888",
+            )
+
+            verify(deliveryRepository).saveAndFlush(deliveryCaptor.capture())
+            assertEquals("010-9999-8888", deliveryCaptor.firstValue.phoneNumber)
         }
 
         @Test
         @DisplayName("주소 상세가 없어도 배달을 생성할 수 있다")
         fun `주소 상세가 없어도 배달을 생성할 수 있다`() {
-            val deliveryId =
-                deliveryService.createDelivery(
-                    pickupAddress = "서울시 중구 세종대로 110",
-                    pickupAddressDetail = null,
-                    pickupLatitude = 37.5665,
-                    pickupLongitude = 126.9780,
-                    deliveryAddress = "서울시 강남구 테헤란로 1",
-                    deliveryAddressDetail = null,
-                    deliveryLatitude = 37.4979,
-                    deliveryLongitude = 127.0276,
-                    phoneNumber = "010-1234-5678",
-                )
+            val deliveryCaptor = argumentCaptor<Delivery>()
+            val savedDelivery = createDelivery(1L)
+            whenever(deliveryRepository.saveAndFlush(any<Delivery>())).thenReturn(savedDelivery)
 
-            val savedDelivery = deliveryRepository.findById(deliveryId)!!
-            assertNotNull(savedDelivery)
-            assertEquals(null, savedDelivery.pickupDestination.addressDetail)
-            assertEquals(null, savedDelivery.deliveryDestination.addressDetail)
-        }
-
-        @Test
-        @DisplayName("배달 생성 시 DeliveryCreatedEvent가 발행된다")
-        fun `배달 생성 시 DeliveryCreatedEvent가 발행된다`() {
             deliveryService.createDelivery(
                 pickupAddress = "서울시 중구 세종대로 110",
                 pickupAddressDetail = null,
@@ -230,123 +192,54 @@ class DeliveryServiceTest {
                 phoneNumber = "010-1234-5678",
             )
 
-            assertEquals(1, publishedEvents.size)
-            val event = publishedEvents.first()
-            assert(event is DeliveryCreatedEvent)
-        }
-
-        @Test
-        @DisplayName("발행된 이벤트에 올바른 정보가 포함된다")
-        fun `발행된 이벤트에 올바른 정보가 포함된다`() {
-            val deliveryId =
-                deliveryService.createDelivery(
-                    pickupAddress = "서울시 중구 세종대로 110",
-                    pickupAddressDetail = null,
-                    pickupLatitude = 37.5665,
-                    pickupLongitude = 126.9780,
-                    deliveryAddress = "서울시 강남구 테헤란로 1",
-                    deliveryAddressDetail = null,
-                    deliveryLatitude = 37.4979,
-                    deliveryLongitude = 127.0276,
-                    phoneNumber = "010-1234-5678",
-                )
-
-            val event = publishedEvents.first() as DeliveryCreatedEvent
-            assertEquals(deliveryId, event.deliveryId)
-            assertEquals(37.5665, event.pickupLocation.latitude)
-            assertEquals(126.9780, event.pickupLocation.longitude)
-            assertEquals(37.4979, event.deliveryLocation.latitude)
-            assertEquals(127.0276, event.deliveryLocation.longitude)
+            verify(deliveryRepository).saveAndFlush(deliveryCaptor.capture())
+            val capturedDelivery = deliveryCaptor.firstValue
+            assertNull(capturedDelivery.pickupDestination.addressDetail)
+            assertNull(capturedDelivery.deliveryDestination.addressDetail)
         }
     }
 
     @Nested
     @DisplayName("배달 완료 테스트")
     inner class CompleteDeliveryTest {
-        private fun createDelivery(): Delivery =
-            deliveryRepository.save(
-                Delivery(
-                    pickupDestination =
-                        Destination(
-                            address = "서울시 중구 세종대로 110",
-                            location = Location(latitude = 37.5665, longitude = 126.9780),
-                        ),
-                    deliveryDestination =
-                        Destination(
-                            address = "서울시 강남구 테헤란로 1",
-                            location = Location(latitude = 37.4979, longitude = 127.0276),
-                        ),
-                    phoneNumber = "010-1234-5678",
-                ),
-            )
-
-        private fun createRobot(name: String = "로봇-1"): Robot =
-            robotRepository.save(
-                Robot(
-                    name = name,
-                    status = RobotStatus.OFF_DUTY,
-                    battery = 100,
-                    location = Location(latitude = 37.5665, longitude = 126.9780),
-                ),
-            )
-
-        private fun setupDeliveryInDroppingOffState(): Pair<Delivery, Robot> {
-            val delivery = createDelivery()
-            val robot = createRobot()
-
-            // 로봇 출근
-            robot.startDuty()
-            robot.pullDomainEvents() // 이벤트 클리어
-
-            // 배달에 로봇 배정
-            delivery.assignRobot(robot.getRobotId())
-            robot.assignDelivery(delivery.getDeliveryId(), delivery.pickupDestination.location)
-
-            // 픽업 완료까지 상태 전이
-            delivery.arrived() // ASSIGNED -> PICKUP_ARRIVED
-            delivery.openDoor() // PICKUP_ARRIVED -> PICKING_UP
-            delivery.startDelivery() // PICKING_UP -> DELIVERING
-            delivery.arrived() // DELIVERING -> DELIVERY_ARRIVED
-            delivery.openDoor() // DELIVERY_ARRIVED -> DROPPING_OFF
-
-            delivery.pullDomainEvents() // 이벤트 클리어
-            robot.pullDomainEvents() // 이벤트 클리어
-
-            return Pair(deliveryRepository.save(delivery), robotRepository.save(robot))
-        }
-
         @Test
         @DisplayName("배달을 성공적으로 완료한다")
         fun `배달을 성공적으로 완료한다`() {
-            val (delivery, robot) = setupDeliveryInDroppingOffState()
+            val delivery = createDeliveryInDroppingOffState()
+            val robot = createRobotWithDelivery(delivery)
+            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
+            whenever(robotRepository.findById(delivery.assignedRobotId!!)).thenReturn(robot)
 
             deliveryService.completeDelivery(delivery.getDeliveryId())
 
-            val updatedDelivery = deliveryRepository.findById(delivery.getDeliveryId())!!
-            assertEquals(DeliveryStatus.COMPLETED, updatedDelivery.status)
+            assertEquals(DeliveryStatus.COMPLETED, delivery.status)
+            verify(deliveryRepository).save(delivery)
         }
 
         @Test
         @DisplayName("배달 완료 시 로봇이 READY 상태가 된다")
         fun `배달 완료 시 로봇이 READY 상태가 된다`() {
-            val (delivery, robot) = setupDeliveryInDroppingOffState()
+            val delivery = createDeliveryInDroppingOffState()
+            val robot = createRobotWithDelivery(delivery)
+            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
+            whenever(robotRepository.findById(delivery.assignedRobotId!!)).thenReturn(robot)
 
             deliveryService.completeDelivery(delivery.getDeliveryId())
 
-            val updatedRobot = robotRepository.findById(robot.getRobotId())!!
-            assertEquals(RobotStatus.READY, updatedRobot.status)
-            assertNull(updatedRobot.currentDeliveryId)
+            assertEquals(RobotStatus.READY, robot.status)
+            assertNull(robot.currentDeliveryId)
+            verify(robotRepository).save(robot)
         }
 
         @Test
         @DisplayName("존재하지 않는 배달 ID로 완료 시 예외가 발생한다")
         fun `존재하지 않는 배달 ID로 완료 시 예외가 발생한다`() {
+            val deliveryId = DeliveryId(99999L)
+            whenever(deliveryRepository.findById(deliveryId)).thenReturn(null)
+
             val exception =
                 assertThrows<IllegalArgumentException> {
-                    deliveryService.completeDelivery(
-                        com.robotdelivery.domain.common
-                            .DeliveryId(99999L),
-                    )
+                    deliveryService.completeDelivery(deliveryId)
                 }
 
             assertEquals("배달을 찾을 수 없습니다: 99999", exception.message)
@@ -355,8 +248,8 @@ class DeliveryServiceTest {
         @Test
         @DisplayName("배차되지 않은 배달 완료 시 예외가 발생한다")
         fun `배차되지 않은 배달 완료 시 예외가 발생한다`() {
-            val delivery = createDelivery()
-            delivery.pullDomainEvents() // 생성 이벤트 클리어 (@PostPersist 이후)
+            val delivery = createDelivery(1L)
+            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
 
             val exception =
                 assertThrows<IllegalStateException> {
@@ -365,152 +258,57 @@ class DeliveryServiceTest {
 
             assertEquals("배차된 로봇이 없습니다.", exception.message)
         }
-
-        @Test
-        @DisplayName("배달 완료 시 DeliveryCompletedEvent가 발행된다")
-        fun `배달 완료 시 DeliveryCompletedEvent가 발행된다`() {
-            val (delivery, robot) = setupDeliveryInDroppingOffState()
-
-            deliveryService.completeDelivery(delivery.getDeliveryId())
-
-            val completedEvent = publishedEvents.filterIsInstance<DeliveryCompletedEvent>().firstOrNull()
-            assertNotNull(completedEvent)
-            assertEquals(delivery.getDeliveryId(), completedEvent!!.deliveryId)
-            assertEquals(robot.getRobotId(), completedEvent.robotId)
-        }
-
-        @Test
-        @DisplayName("배달 완료 시 RobotBecameAvailableEvent가 발행된다")
-        fun `배달 완료 시 RobotBecameAvailableEvent가 발행된다`() {
-            val (delivery, robot) = setupDeliveryInDroppingOffState()
-
-            deliveryService.completeDelivery(delivery.getDeliveryId())
-
-            val availableEvent = publishedEvents.filterIsInstance<RobotBecameAvailableEvent>().firstOrNull()
-            assertNotNull(availableEvent)
-            assertEquals(robot.getRobotId(), availableEvent!!.robotId)
-        }
     }
 
     @Nested
     @DisplayName("문열기 테스트")
     inner class OpenDoorTest {
-        private fun createDelivery(): Delivery =
-            deliveryRepository.save(
-                Delivery(
-                    pickupDestination =
-                        Destination(
-                            address = "서울시 중구 세종대로 110",
-                            location = Location(latitude = 37.5665, longitude = 126.9780),
-                        ),
-                    deliveryDestination =
-                        Destination(
-                            address = "서울시 강남구 테헤란로 1",
-                            location = Location(latitude = 37.4979, longitude = 127.0276),
-                        ),
-                    phoneNumber = "010-1234-5678",
-                ),
-            )
-
-        private fun createRobot(name: String = "로봇-1"): Robot =
-            robotRepository.save(
-                Robot(
-                    name = name,
-                    status = RobotStatus.OFF_DUTY,
-                    battery = 100,
-                    location = Location(latitude = 37.5665, longitude = 126.9780),
-                ),
-            )
-
-        private fun setupDeliveryInPickupArrivedState(): Pair<Delivery, Robot> {
-            val delivery = createDelivery()
-            val robot = createRobot()
-
-            // 로봇 출근
-            robot.startDuty()
-            robot.pullDomainEvents()
-
-            // 배달에 로봇 배정
-            delivery.assignRobot(robot.getRobotId())
-            robot.assignDelivery(delivery.getDeliveryId(), delivery.pickupDestination.location)
-
-            // 픽업 도착 상태로 전이
-            delivery.arrived() // ASSIGNED -> PICKUP_ARRIVED
-
-            delivery.pullDomainEvents()
-            robot.pullDomainEvents()
-            fakeRobotClient.reset()
-
-            return Pair(deliveryRepository.save(delivery), robotRepository.save(robot))
-        }
-
-        private fun setupDeliveryInDeliveryArrivedState(): Pair<Delivery, Robot> {
-            val delivery = createDelivery()
-            val robot = createRobot()
-
-            // 로봇 출근
-            robot.startDuty()
-            robot.pullDomainEvents()
-
-            // 배달에 로봇 배정
-            delivery.assignRobot(robot.getRobotId())
-            robot.assignDelivery(delivery.getDeliveryId(), delivery.pickupDestination.location)
-
-            // 배송 도착 상태까지 전이
-            delivery.arrived() // ASSIGNED -> PICKUP_ARRIVED
-            delivery.openDoor() // PICKUP_ARRIVED -> PICKING_UP
-            delivery.startDelivery() // PICKING_UP -> DELIVERING
-            delivery.arrived() // DELIVERING -> DELIVERY_ARRIVED
-
-            delivery.pullDomainEvents()
-            robot.pullDomainEvents()
-            fakeRobotClient.reset()
-
-            return Pair(deliveryRepository.save(delivery), robotRepository.save(robot))
-        }
-
         @Test
         @DisplayName("픽업 도착 상태에서 문을 열면 PICKING_UP 상태가 된다")
         fun `픽업 도착 상태에서 문을 열면 PICKING_UP 상태가 된다`() {
-            val (delivery, robot) = setupDeliveryInPickupArrivedState()
+            val delivery = createDeliveryInPickupArrivedState()
+            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
 
             deliveryService.openDoor(delivery.getDeliveryId())
 
-            val updatedDelivery = deliveryRepository.findById(delivery.getDeliveryId())!!
-            assertEquals(DeliveryStatus.PICKING_UP, updatedDelivery.status)
+            assertEquals(DeliveryStatus.PICKING_UP, delivery.status)
+            verify(deliveryRepository).save(delivery)
+            verify(robotClient).openDoor(delivery.assignedRobotId!!)
         }
 
         @Test
         @DisplayName("배송 도착 상태에서 문을 열면 DROPPING_OFF 상태가 된다")
         fun `배송 도착 상태에서 문을 열면 DROPPING_OFF 상태가 된다`() {
-            val (delivery, robot) = setupDeliveryInDeliveryArrivedState()
+            val delivery = createDeliveryInDeliveryArrivedState()
+            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
 
             deliveryService.openDoor(delivery.getDeliveryId())
 
-            val updatedDelivery = deliveryRepository.findById(delivery.getDeliveryId())!!
-            assertEquals(DeliveryStatus.DROPPING_OFF, updatedDelivery.status)
+            assertEquals(DeliveryStatus.DROPPING_OFF, delivery.status)
+            verify(deliveryRepository).save(delivery)
+            verify(robotClient).openDoor(delivery.assignedRobotId!!)
         }
 
         @Test
         @DisplayName("문열기 시 RobotClient.openDoor가 호출된다")
         fun `문열기 시 RobotClient openDoor가 호출된다`() {
-            val (delivery, robot) = setupDeliveryInPickupArrivedState()
+            val delivery = createDeliveryInPickupArrivedState()
+            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
 
             deliveryService.openDoor(delivery.getDeliveryId())
 
-            assertEquals(1, fakeRobotClient.openedDoorRobots.size)
-            assertEquals(robot.getRobotId(), fakeRobotClient.openedDoorRobots.first())
+            verify(robotClient).openDoor(delivery.assignedRobotId!!)
         }
 
         @Test
         @DisplayName("존재하지 않는 배달 ID로 문열기 시 예외가 발생한다")
         fun `존재하지 않는 배달 ID로 문열기 시 예외가 발생한다`() {
+            val deliveryId = DeliveryId(99999L)
+            whenever(deliveryRepository.findById(deliveryId)).thenReturn(null)
+
             val exception =
                 assertThrows<IllegalArgumentException> {
-                    deliveryService.openDoor(
-                        com.robotdelivery.domain.common
-                            .DeliveryId(99999L),
-                    )
+                    deliveryService.openDoor(deliveryId)
                 }
 
             assertEquals("배달을 찾을 수 없습니다: 99999", exception.message)
@@ -519,8 +317,8 @@ class DeliveryServiceTest {
         @Test
         @DisplayName("배차되지 않은 배달의 문열기 시 예외가 발생한다")
         fun `배차되지 않은 배달의 문열기 시 예외가 발생한다`() {
-            val delivery = createDelivery()
-            delivery.pullDomainEvents()
+            val delivery = createDelivery(1L)
+            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
 
             val exception =
                 assertThrows<IllegalStateException> {
@@ -533,16 +331,8 @@ class DeliveryServiceTest {
         @Test
         @DisplayName("문을 열 수 없는 상태에서 문열기 시 예외가 발생한다")
         fun `문을 열 수 없는 상태에서 문열기 시 예외가 발생한다`() {
-            val delivery = createDelivery()
-            val robot = createRobot()
-
-            robot.startDuty()
-            delivery.assignRobot(robot.getRobotId())
-            robot.assignDelivery(delivery.getDeliveryId(), delivery.pickupDestination.location)
-            // ASSIGNED 상태 (도착하지 않음)
-
-            deliveryRepository.save(delivery)
-            robotRepository.save(robot)
+            val delivery = createDeliveryInAssignedState()
+            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
 
             val exception =
                 assertThrows<IllegalStateException> {
@@ -556,103 +346,43 @@ class DeliveryServiceTest {
     @Nested
     @DisplayName("배송 시작 테스트")
     inner class StartDeliveryTest {
-        private fun createDelivery(): Delivery =
-            deliveryRepository.save(
-                Delivery(
-                    pickupDestination =
-                        Destination(
-                            address = "서울시 중구 세종대로 110",
-                            location = Location(latitude = 37.5665, longitude = 126.9780),
-                        ),
-                    deliveryDestination =
-                        Destination(
-                            address = "서울시 강남구 테헤란로 1",
-                            location = Location(latitude = 37.4979, longitude = 127.0276),
-                        ),
-                    phoneNumber = "010-1234-5678",
-                ),
-            )
-
-        private fun createRobot(name: String = "로봇-1"): Robot =
-            robotRepository.save(
-                Robot(
-                    name = name,
-                    status = RobotStatus.OFF_DUTY,
-                    battery = 100,
-                    location = Location(latitude = 37.5665, longitude = 126.9780),
-                ),
-            )
-
-        private fun setupDeliveryInPickingUpState(): Pair<Delivery, Robot> {
-            val delivery = createDelivery()
-            val robot = createRobot()
-
-            // 로봇 출근
-            robot.startDuty()
-            robot.pullDomainEvents()
-
-            // 배달에 로봇 배정
-            delivery.assignRobot(robot.getRobotId())
-            robot.assignDelivery(delivery.getDeliveryId(), delivery.pickupDestination.location)
-
-            // 픽업 중 상태까지 전이
-            delivery.arrived() // ASSIGNED -> PICKUP_ARRIVED
-            delivery.openDoor() // PICKUP_ARRIVED -> PICKING_UP
-
-            delivery.pullDomainEvents()
-            robot.pullDomainEvents()
-            fakeRobotClient.reset()
-
-            return Pair(deliveryRepository.save(delivery), robotRepository.save(robot))
-        }
-
         @Test
         @DisplayName("배송을 성공적으로 시작한다")
         fun `배송을 성공적으로 시작한다`() {
-            val (delivery, robot) = setupDeliveryInPickingUpState()
+            val delivery = createDeliveryInPickingUpState()
+            val robot = createRobotWithDelivery(delivery)
+            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
+            whenever(robotRepository.findById(delivery.assignedRobotId!!)).thenReturn(robot)
 
             deliveryService.startDelivery(delivery.getDeliveryId())
 
-            val updatedDelivery = deliveryRepository.findById(delivery.getDeliveryId())!!
-            assertEquals(DeliveryStatus.DELIVERING, updatedDelivery.status)
+            assertEquals(DeliveryStatus.DELIVERING, delivery.status)
+            verify(deliveryRepository).save(delivery)
         }
 
         @Test
         @DisplayName("배송 시작 시 로봇에게 배송 목적지로 이동 명령이 전달된다")
         fun `배송 시작 시 로봇에게 배송 목적지로 이동 명령이 전달된다`() {
-            val (delivery, robot) = setupDeliveryInPickingUpState()
+            val delivery = createDeliveryInPickingUpState()
+            val robot = createRobotWithDelivery(delivery)
+            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
+            whenever(robotRepository.findById(delivery.assignedRobotId!!)).thenReturn(robot)
 
             deliveryService.startDelivery(delivery.getDeliveryId())
 
-            assertEquals(1, fakeRobotClient.navigatedRobots.size)
-            val (navigatedRobotId, destination) = fakeRobotClient.navigatedRobots.first()
-            assertEquals(robot.getRobotId(), navigatedRobotId)
-            assertEquals(delivery.deliveryDestination.location.latitude, destination.latitude)
-            assertEquals(delivery.deliveryDestination.location.longitude, destination.longitude)
-        }
-
-        @Test
-        @DisplayName("배송 시작 시 DeliveryStartedEvent가 발행된다")
-        fun `배송 시작 시 DeliveryStartedEvent가 발행된다`() {
-            val (delivery, robot) = setupDeliveryInPickingUpState()
-
-            deliveryService.startDelivery(delivery.getDeliveryId())
-
-            val startedEvent = publishedEvents.filterIsInstance<DeliveryStartedEvent>().firstOrNull()
-            assertNotNull(startedEvent)
-            assertEquals(delivery.getDeliveryId(), startedEvent!!.deliveryId)
-            assertEquals(robot.getRobotId(), startedEvent.robotId)
+            assertEquals(delivery.deliveryDestination.location, robot.destination)
+            verify(robotRepository).save(robot)
         }
 
         @Test
         @DisplayName("존재하지 않는 배달 ID로 배송 시작 시 예외가 발생한다")
         fun `존재하지 않는 배달 ID로 배송 시작 시 예외가 발생한다`() {
+            val deliveryId = DeliveryId(99999L)
+            whenever(deliveryRepository.findById(deliveryId)).thenReturn(null)
+
             val exception =
                 assertThrows<IllegalArgumentException> {
-                    deliveryService.startDelivery(
-                        com.robotdelivery.domain.common
-                            .DeliveryId(99999L),
-                    )
+                    deliveryService.startDelivery(deliveryId)
                 }
 
             assertEquals("배달을 찾을 수 없습니다: 99999", exception.message)
@@ -661,8 +391,8 @@ class DeliveryServiceTest {
         @Test
         @DisplayName("배차되지 않은 배달의 배송 시작 시 예외가 발생한다")
         fun `배차되지 않은 배달의 배송 시작 시 예외가 발생한다`() {
-            val delivery = createDelivery()
-            delivery.pullDomainEvents()
+            val delivery = createDelivery(1L)
+            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
 
             val exception =
                 assertThrows<IllegalStateException> {
@@ -675,16 +405,10 @@ class DeliveryServiceTest {
         @Test
         @DisplayName("픽업 중 상태가 아닌 배달의 배송 시작 시 예외가 발생한다")
         fun `픽업 중 상태가 아닌 배달의 배송 시작 시 예외가 발생한다`() {
-            val delivery = createDelivery()
-            val robot = createRobot()
-
-            robot.startDuty()
-            delivery.assignRobot(robot.getRobotId())
-            robot.assignDelivery(delivery.getDeliveryId(), delivery.pickupDestination.location)
-            // ASSIGNED 상태 (픽업 중이 아님)
-
-            deliveryRepository.save(delivery)
-            robotRepository.save(robot)
+            val delivery = createDeliveryInAssignedState()
+            val robot = createRobotWithDelivery(delivery)
+            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
+            whenever(robotRepository.findById(delivery.assignedRobotId!!)).thenReturn(robot)
 
             val exception =
                 assertThrows<IllegalArgumentException> {
@@ -698,95 +422,44 @@ class DeliveryServiceTest {
     @Nested
     @DisplayName("회수 완료 테스트")
     inner class CompleteReturnTest {
-        private fun createDelivery(): Delivery =
-            deliveryRepository.save(
-                Delivery(
-                    pickupDestination =
-                        Destination(
-                            address = "서울시 중구 세종대로 110",
-                            location = Location(latitude = 37.5665, longitude = 126.9780),
-                        ),
-                    deliveryDestination =
-                        Destination(
-                            address = "서울시 강남구 테헤란로 1",
-                            location = Location(latitude = 37.4979, longitude = 127.0276),
-                        ),
-                    phoneNumber = "010-1234-5678",
-                ),
-            )
-
-        private fun createRobot(name: String = "로봇-1"): Robot =
-            robotRepository.save(
-                Robot(
-                    name = name,
-                    status = RobotStatus.OFF_DUTY,
-                    battery = 100,
-                    location = Location(latitude = 37.5665, longitude = 126.9780),
-                ),
-            )
-
-        private fun setupDeliveryInReturningOffState(): Pair<Delivery, Robot> {
-            val delivery = createDelivery()
-            val robot = createRobot()
-
-            // 로봇 출근
-            robot.startDuty()
-            robot.pullDomainEvents() // 이벤트 클리어
-
-            // 배달에 로봇 배정
-            delivery.assignRobot(robot.getRobotId())
-            robot.assignDelivery(delivery.getDeliveryId(), delivery.pickupDestination.location)
-
-            // 픽업 완료까지 상태 전이
-            delivery.arrived() // ASSIGNED -> PICKUP_ARRIVED
-            delivery.openDoor() // PICKUP_ARRIVED -> PICKING_UP
-            delivery.startDelivery() // PICKING_UP -> DELIVERING
-            delivery.arrived() // DELIVERING -> DELIVERY_ARRIVED
-            delivery.openDoor() // DELIVERY_ARRIVED -> DROPPING_OFF
-            delivery.cancel() // DROPPING_OFF -> RETURNING
-            delivery.arrived() // RETURNING -> RETURN_ARRIVED
-            delivery.openDoor() // RETURN_ARRIVED -> RETURNING_OFF
-
-            delivery.pullDomainEvents() // 이벤트 클리어
-            robot.pullDomainEvents() // 이벤트 클리어
-
-            return Pair(deliveryRepository.save(delivery), robotRepository.save(robot))
-        }
-
         @Test
         @DisplayName("회수를 성공적으로 완료한다")
         fun `회수를 성공적으로 완료한다`() {
-            val (delivery, robot) = setupDeliveryInReturningOffState()
+            val delivery = createDeliveryInReturningOffState()
+            val robot = createRobotWithDelivery(delivery)
+            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
+            whenever(robotRepository.findById(delivery.assignedRobotId!!)).thenReturn(robot)
 
             deliveryService.completeReturn(delivery.getDeliveryId())
 
-            val updatedDelivery = deliveryRepository.findById(delivery.getDeliveryId())!!
-            assertEquals(DeliveryStatus.RETURN_COMPLETED, updatedDelivery.status)
+            assertEquals(DeliveryStatus.RETURN_COMPLETED, delivery.status)
+            verify(deliveryRepository).save(delivery)
         }
 
         @Test
         @DisplayName("회수 완료 시 로봇이 READY 상태가 된다")
         fun `회수 완료 시 로봇이 READY 상태가 된다`() {
-            val (delivery, robot) = setupDeliveryInReturningOffState()
+            val delivery = createDeliveryInReturningOffState()
+            val robot = createRobotWithDelivery(delivery)
+            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
+            whenever(robotRepository.findById(delivery.assignedRobotId!!)).thenReturn(robot)
 
             deliveryService.completeReturn(delivery.getDeliveryId())
 
-            val updatedRobot = robotRepository.findById(robot.getRobotId())!!
-            assertAll(
-                { assertEquals(RobotStatus.READY, updatedRobot.status) },
-                { assertNull(updatedRobot.currentDeliveryId) },
-            )
+            assertEquals(RobotStatus.READY, robot.status)
+            assertNull(robot.currentDeliveryId)
+            verify(robotRepository).save(robot)
         }
 
         @Test
         @DisplayName("존재하지 않는 배달 ID로 회수 완료 시 예외가 발생한다")
         fun `존재하지 않는 배달 ID로 회수 완료 시 예외가 발생한다`() {
+            val deliveryId = DeliveryId(99999L)
+            whenever(deliveryRepository.findById(deliveryId)).thenReturn(null)
+
             val exception =
                 assertThrows<IllegalArgumentException> {
-                    deliveryService.completeReturn(
-                        com.robotdelivery.domain.common
-                            .DeliveryId(99999L),
-                    )
+                    deliveryService.completeReturn(deliveryId)
                 }
 
             assertEquals("배달을 찾을 수 없습니다: 99999", exception.message)
@@ -795,8 +468,8 @@ class DeliveryServiceTest {
         @Test
         @DisplayName("배차되지 않은 배달 회수 완료 시 예외가 발생한다")
         fun `배차되지 않은 배달 회수 완료 시 예외가 발생한다`() {
-            val delivery = createDelivery()
-            delivery.pullDomainEvents() // 생성 이벤트 클리어 (@PostPersist 이후)
+            val delivery = createDelivery(1L)
+            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
 
             val exception =
                 assertThrows<IllegalStateException> {
@@ -807,30 +480,12 @@ class DeliveryServiceTest {
         }
 
         @Test
-        @DisplayName("회수 완료 시 RobotBecameAvailableEvent가 발행된다")
-        fun `회수 완료 시 RobotBecameAvailableEvent가 발행된다`() {
-            val (delivery, robot) = setupDeliveryInReturningOffState()
-
-            deliveryService.completeReturn(delivery.getDeliveryId())
-
-            val availableEvent = publishedEvents.filterIsInstance<RobotBecameAvailableEvent>().firstOrNull()
-            assertNotNull(availableEvent)
-            assertEquals(robot.getRobotId(), availableEvent!!.robotId)
-        }
-
-        @Test
         @DisplayName("회수 중 상태가 아닌 배달의 회수 완료 시 예외가 발생한다")
         fun `회수 중 상태가 아닌 배달의 회수 완료 시 예외가 발생한다`() {
-            val delivery = createDelivery()
-            val robot = createRobot()
-
-            robot.startDuty()
-            delivery.assignRobot(robot.getRobotId())
-            robot.assignDelivery(delivery.getDeliveryId(), delivery.pickupDestination.location)
-            // ASSIGNED 상태 (회수 중이 아님)
-
-            deliveryRepository.save(delivery)
-            robotRepository.save(robot)
+            val delivery = createDeliveryInAssignedState()
+            val robot = createRobotWithDelivery(delivery)
+            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
+            whenever(robotRepository.findById(delivery.assignedRobotId!!)).thenReturn(robot)
 
             val exception =
                 assertThrows<IllegalArgumentException> {
@@ -839,5 +494,88 @@ class DeliveryServiceTest {
 
             assertTrue(exception.message!!.contains("회수 완료 처리할 수 없는 상태입니다"))
         }
+    }
+
+    // Helper functions
+    private fun createDelivery(id: Long): Delivery =
+        Delivery(
+            id = id,
+            pickupDestination =
+                Destination(
+                    address = "서울시 중구 세종대로 110",
+                    location = Location(latitude = 37.5665, longitude = 126.9780),
+                ),
+            deliveryDestination =
+                Destination(
+                    address = "서울시 강남구 테헤란로 1",
+                    location = Location(latitude = 37.4979, longitude = 127.0276),
+                ),
+            phoneNumber = "010-1234-5678",
+        )
+
+    private fun createRobot(
+        id: Long = 1L,
+        name: String = "로봇-1",
+    ): Robot =
+        Robot(
+            id = id,
+            name = name,
+            status = RobotStatus.OFF_DUTY,
+            battery = 100,
+            location = Location(latitude = 37.5665, longitude = 126.9780),
+        )
+
+    private fun createDeliveryInAssignedState(): Delivery {
+        val delivery = createDelivery(1L)
+        delivery.assignRobot(RobotId(1L))
+        delivery.pullDomainEvents()
+        return delivery
+    }
+
+    private fun createDeliveryInPickupArrivedState(): Delivery {
+        val delivery = createDeliveryInAssignedState()
+        delivery.arrived()
+        delivery.pullDomainEvents()
+        return delivery
+    }
+
+    private fun createDeliveryInDeliveryArrivedState(): Delivery {
+        val delivery = createDeliveryInPickupArrivedState()
+        delivery.openDoor()
+        delivery.startDelivery()
+        delivery.arrived()
+        delivery.pullDomainEvents()
+        return delivery
+    }
+
+    private fun createDeliveryInPickingUpState(): Delivery {
+        val delivery = createDeliveryInPickupArrivedState()
+        delivery.openDoor()
+        delivery.pullDomainEvents()
+        return delivery
+    }
+
+    private fun createDeliveryInDroppingOffState(): Delivery {
+        val delivery = createDeliveryInDeliveryArrivedState()
+        delivery.openDoor()
+        delivery.pullDomainEvents()
+        return delivery
+    }
+
+    private fun createDeliveryInReturningOffState(): Delivery {
+        val delivery = createDeliveryInDroppingOffState()
+        delivery.cancel()
+        delivery.arrived()
+        delivery.openDoor()
+        delivery.pullDomainEvents()
+        return delivery
+    }
+
+    private fun createRobotWithDelivery(delivery: Delivery): Robot {
+        val robot = createRobot()
+        robot.startDuty()
+        robot.assignDelivery(delivery.getDeliveryId(), delivery.pickupDestination.location)
+        robot.pullDomainEvents()
+        return robot
     }
 }
