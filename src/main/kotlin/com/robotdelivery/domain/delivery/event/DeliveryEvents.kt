@@ -7,57 +7,59 @@ import java.time.LocalDateTime
 import java.util.UUID
 
 sealed class DeliveryEvent(
+    val deliveryId: DeliveryId,
+    val robotId: RobotId? = null,
     val eventId: String = UUID.randomUUID().toString(),
     val occurredAt: LocalDateTime = LocalDateTime.now(),
 )
 
 class DeliveryCreatedEvent(
-    val deliveryId: DeliveryId,
+    deliveryId: DeliveryId,
     val pickupLocation: Location,
     val deliveryLocation: Location,
-) : DeliveryEvent()
+) : DeliveryEvent(deliveryId = deliveryId, robotId = null)
 
 class DeliveryRobotAssignedEvent(
-    val deliveryId: DeliveryId,
-    val robotId: RobotId,
+    deliveryId: DeliveryId,
+    robotId: RobotId,
     val pickupLocation: Location,
-) : DeliveryEvent()
+) : DeliveryEvent(deliveryId = deliveryId, robotId = robotId)
 
 class DeliveryStartedEvent(
-    val deliveryId: DeliveryId,
-    val robotId: RobotId,
-) : DeliveryEvent()
+    deliveryId: DeliveryId,
+    robotId: RobotId,
+) : DeliveryEvent(deliveryId = deliveryId, robotId = robotId)
 
 class DeliveryCompletedEvent(
-    val deliveryId: DeliveryId,
-    val robotId: RobotId,
-) : DeliveryEvent()
+    deliveryId: DeliveryId,
+    robotId: RobotId,
+) : DeliveryEvent(deliveryId = deliveryId, robotId = robotId)
 
 class DeliveryCanceledEvent(
-    val deliveryId: DeliveryId,
-    val robotId: RobotId?,
+    deliveryId: DeliveryId,
+    robotId: RobotId?,
     val requiresReturn: Boolean,
-) : DeliveryEvent()
+) : DeliveryEvent(deliveryId = deliveryId, robotId = robotId)
 
 class DeliveryReturnStartedEvent(
-    val deliveryId: DeliveryId,
-    val robotId: RobotId,
+    deliveryId: DeliveryId,
+    robotId: RobotId,
     val returnLocation: Location,
-) : DeliveryEvent()
+) : DeliveryEvent(deliveryId = deliveryId, robotId = robotId)
 
 class DeliveryReturnCompletedEvent(
-    val deliveryId: DeliveryId,
-    val robotId: RobotId,
-) : DeliveryEvent()
+    deliveryId: DeliveryId,
+    robotId: RobotId,
+) : DeliveryEvent(deliveryId = deliveryId, robotId = robotId)
 
 class DeliveryRobotUnassignedEvent(
-    val deliveryId: DeliveryId,
-    val robotId: RobotId,
-) : DeliveryEvent()
+    deliveryId: DeliveryId,
+    robotId: RobotId,
+) : DeliveryEvent(deliveryId = deliveryId, robotId = robotId)
 
 class DeliveryRobotReassignedEvent(
-    val deliveryId: DeliveryId,
+    deliveryId: DeliveryId,
     val previousRobotId: RobotId,
     val newRobotId: RobotId,
     val newRobotDestination: Location,
-) : DeliveryEvent()
+) : DeliveryEvent(deliveryId = deliveryId, robotId = newRobotId)
