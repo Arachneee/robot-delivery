@@ -4,6 +4,7 @@ package com.robotdelivery.domain.delivery
 
 import com.robotdelivery.domain.common.BaseEntity
 import com.robotdelivery.domain.common.DeliveryId
+import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.common.RobotId
 import com.robotdelivery.domain.delivery.event.*
 import jakarta.persistence.*
@@ -58,7 +59,7 @@ class Delivery(
     }
 
     fun assignRobot(robotId: RobotId) {
-        require(status == DeliveryStatus.PENDING) {
+        check(status == DeliveryStatus.PENDING) {
             "대기 상태의 배달만 로봇 배차가 가능합니다. 현재 상태: $status"
         }
         this.assignedRobotId = robotId
@@ -71,6 +72,53 @@ class Delivery(
                 pickupLocation = pickupDestination.location,
             ),
         )
+    }
+
+    fun unassignRobot() {
+        check(status.isUnassignable()) {
+            "배달 출발 전 상태에서만 배차 취소가 가능합니다. 현재 상태: $status"
+        }
+        val robotId =
+            this.assignedRobotId
+                ?: throw IllegalStateException("배차된 로봇이 없습니다.")
+
+        this.assignedRobotId = null
+        transitionTo(DeliveryStatus.PENDING)
+
+        registerEvent(
+            DeliveryRobotUnassignedEvent(
+                deliveryId = getDeliveryId(),
+                robotId = robotId,
+            ),
+        )
+    }
+
+    fun reassignRobot(newRobotId: RobotId): Location {
+        check(status.isReassignable()) {
+            "배차 변경이 불가능한 상태입니다. 현재 상태: $status"
+        }
+        val previousRobotId =
+            this.assignedRobotId
+                ?: throw IllegalStateException("배차된 로봇이 없습니다.")
+
+        check(previousRobotId != newRobotId) {
+            "동일한 로봇으로는 배차 변경할 수 없습니다."
+        }
+
+        val newRobotDestination = getCurrentDestination()!!.location
+
+        this.assignedRobotId = newRobotId
+
+        registerEvent(
+            DeliveryRobotReassignedEvent(
+                deliveryId = getDeliveryId(),
+                previousRobotId = previousRobotId,
+                newRobotId = newRobotId,
+                newRobotDestination = newRobotDestination,
+            ),
+        )
+
+        return newRobotDestination
     }
 
     fun arrived() {
@@ -96,7 +144,7 @@ class Delivery(
     }
 
     fun startDelivery() {
-        require(status == DeliveryStatus.PICKING_UP) {
+        check(status == DeliveryStatus.PICKING_UP) {
             "픽업 중 상태에서만 배송을 시작할 수 있습니다. 현재 상태: $status"
         }
         transitionTo(DeliveryStatus.DELIVERING)
@@ -110,7 +158,7 @@ class Delivery(
     }
 
     fun complete() {
-        require(status == DeliveryStatus.DROPPING_OFF) {
+        check(status == DeliveryStatus.DROPPING_OFF) {
             "배달 완료 처리할 수 없는 상태입니다. 현재 상태: $status"
         }
         transitionTo(DeliveryStatus.COMPLETED)
@@ -124,7 +172,7 @@ class Delivery(
     }
 
     fun completeReturn() {
-        require(status == DeliveryStatus.RETURNING_OFF) {
+        check(status == DeliveryStatus.RETURNING_OFF) {
             "회수 완료 처리할 수 없는 상태입니다. 현재 상태: $status"
         }
         transitionTo(DeliveryStatus.RETURN_COMPLETED)
@@ -167,7 +215,7 @@ class Delivery(
     }
 
     private fun transitionTo(newStatus: DeliveryStatus) {
-        require(status.canTransitionTo(newStatus)) {
+        check(status.canTransitionTo(newStatus)) {
             "잘못된 상태 전이입니다: $status -> $newStatus"
         }
         this.status = newStatus

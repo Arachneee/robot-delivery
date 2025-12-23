@@ -43,7 +43,7 @@ class Robot(
     fun getRobotId(): RobotId = RobotId(id)
 
     fun startDuty() {
-        require(status.canTransitionTo(RobotStatus.READY)) {
+        check(status.canTransitionTo(RobotStatus.READY)) {
             "출근할 수 없는 상태입니다. 현재 상태: $status"
         }
         transitionTo(RobotStatus.READY)
@@ -52,10 +52,10 @@ class Robot(
     }
 
     fun endDuty() {
-        require(status.canTransitionTo(RobotStatus.OFF_DUTY)) {
+        check(status.canTransitionTo(RobotStatus.OFF_DUTY)) {
             "퇴근할 수 없는 상태입니다. 현재 상태: $status"
         }
-        require(currentDeliveryId == null) {
+        check(currentDeliveryId == null) {
             "배달 수행 중에는 퇴근할 수 없습니다."
         }
         transitionTo(RobotStatus.OFF_DUTY)
@@ -65,10 +65,10 @@ class Robot(
         deliveryId: DeliveryId,
         pickupLocation: Location,
     ) {
-        require(status.isAvailableForDelivery()) {
+        check(status.isAvailableForDelivery()) {
             "배달을 받을 수 없는 상태입니다. 현재 상태: $status"
         }
-        require(currentDeliveryId == null) {
+        check(currentDeliveryId == null) {
             "이미 다른 배달을 수행 중입니다."
         }
         this.currentDeliveryId = deliveryId
@@ -77,13 +77,27 @@ class Robot(
     }
 
     fun completeDelivery() {
-        require(status == RobotStatus.BUSY) {
+        check(status == RobotStatus.BUSY) {
             "배달 수행 중이 아닙니다. 현재 상태: $status"
         }
-        require(currentDeliveryId != null) {
+        check(currentDeliveryId != null) {
             "할당된 배달이 없습니다."
         }
         this.currentDeliveryId = null
+        transitionTo(RobotStatus.READY)
+
+        registerEvent(RobotBecameAvailableEvent(robotId = getRobotId(), location = location))
+    }
+
+    fun unassignDelivery() {
+        check(status == RobotStatus.BUSY) {
+            "배달 수행 중이 아닙니다. 현재 상태: $status"
+        }
+        check(currentDeliveryId != null) {
+            "할당된 배달이 없습니다."
+        }
+        this.currentDeliveryId = null
+        this.destination = null
         transitionTo(RobotStatus.READY)
 
         registerEvent(RobotBecameAvailableEvent(robotId = getRobotId(), location = location))
@@ -106,7 +120,7 @@ class Robot(
     }
 
     fun navigateTo(newDestination: Location) {
-        require(status == RobotStatus.BUSY) {
+        check(status == RobotStatus.BUSY) {
             "배달 수행 중이 아닙니다. 현재 상태: $status"
         }
         this.destination = newDestination
@@ -117,7 +131,7 @@ class Robot(
     fun isAvailable(): Boolean = status.isAvailableForDelivery() && currentDeliveryId == null && battery >= 20
 
     private fun transitionTo(newStatus: RobotStatus) {
-        require(status.canTransitionTo(newStatus)) {
+        check(status.canTransitionTo(newStatus)) {
             "잘못된 상태 전이입니다: $status -> $newStatus"
         }
         this.status = newStatus

@@ -49,3 +49,15 @@ class DeliveryReturnCompletedEvent(
     val deliveryId: DeliveryId,
     val robotId: RobotId,
 ) : DeliveryEvent()
+
+class DeliveryRobotUnassignedEvent(
+    val deliveryId: DeliveryId,
+    val robotId: RobotId,
+) : DeliveryEvent()
+
+class DeliveryRobotReassignedEvent(
+    val deliveryId: DeliveryId,
+    val previousRobotId: RobotId,
+    val newRobotId: RobotId,
+    val newRobotDestination: Location,
+) : DeliveryEvent()
