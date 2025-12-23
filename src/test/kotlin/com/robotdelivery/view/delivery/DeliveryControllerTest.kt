@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.robotdelivery.application.DeliveryService
 import com.robotdelivery.domain.common.DeliveryId
+import com.robotdelivery.domain.common.RobotId
 import com.robotdelivery.view.delivery.dto.CreateDeliveryRequest
+import com.robotdelivery.view.delivery.dto.ReassignRobotRequest
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -343,6 +345,94 @@ class DeliveryControllerTest {
                         fieldWithPath("requiresReturn")
                             .type(JsonFieldType.BOOLEAN)
                             .description("물품 회수 필요 여부"),
+                        fieldWithPath("message")
+                            .type(JsonFieldType.STRING)
+                            .description("응답 메시지"),
+                    ),
+                ),
+            )
+    }
+
+    @Test
+    @DisplayName("배차 취소 API - 성공")
+    fun `배차 취소 API 성공`() {
+        // given
+        val deliveryId = 1L
+        doNothing().whenever(deliveryService).unassignRobot(DeliveryId(deliveryId))
+
+        // when & then
+        mockMvc
+            .perform(
+                post("/api/deliveries/{deliveryId}/unassign-robot", deliveryId),
+            ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.deliveryId").value(deliveryId))
+            .andExpect(jsonPath("$.message").value("배차가 취소되었습니다."))
+            .andDo(
+                document(
+                    "delivery-unassign-robot",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    pathParameters(
+                        parameterWithName("deliveryId").description("배달 ID"),
+                    ),
+                    responseFields(
+                        fieldWithPath("deliveryId")
+                            .type(JsonFieldType.NUMBER)
+                            .description("배차 취소된 배달 ID"),
+                        fieldWithPath("message")
+                            .type(JsonFieldType.STRING)
+                            .description("응답 메시지"),
+                    ),
+                ),
+            )
+    }
+
+    @Test
+    @DisplayName("배차 변경 API - 성공")
+    fun `배차 변경 API 성공`() {
+        // given
+        val deliveryId = 1L
+        val previousRobotId = 1L
+        val newRobotId = 2L
+        val request = ReassignRobotRequest(newRobotId = newRobotId)
+
+        whenever(deliveryService.reassignRobot(DeliveryId(deliveryId), RobotId(newRobotId)))
+            .thenReturn(RobotId(previousRobotId))
+
+        // when & then
+        mockMvc
+            .perform(
+                post("/api/deliveries/{deliveryId}/reassign-robot", deliveryId)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request)),
+            ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.deliveryId").value(deliveryId))
+            .andExpect(jsonPath("$.previousRobotId").value(previousRobotId))
+            .andExpect(jsonPath("$.newRobotId").value(newRobotId))
+            .andExpect(jsonPath("$.message").value("배차가 변경되었습니다."))
+            .andDo(
+                document(
+                    "delivery-reassign-robot",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    pathParameters(
+                        parameterWithName("deliveryId").description("배달 ID"),
+                    ),
+                    requestFields(
+                        fieldWithPath("newRobotId")
+                            .type(JsonFieldType.NUMBER)
+                            .description("새로 배차할 로봇 ID"),
+                    ),
+                    responseFields(
+                        fieldWithPath("deliveryId")
+                            .type(JsonFieldType.NUMBER)
+                            .description("배차 변경된 배달 ID"),
+                        fieldWithPath("previousRobotId")
+                            .type(JsonFieldType.NUMBER)
+                            .description("이전 로봇 ID"),
+                        fieldWithPath("newRobotId")
+                            .type(JsonFieldType.NUMBER)
+                            .description("새 로봇 ID"),
                         fieldWithPath("message")
                             .type(JsonFieldType.STRING)
                             .description("응답 메시지"),

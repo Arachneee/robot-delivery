@@ -2,10 +2,7 @@ package com.robotdelivery.domain.delivery
 
 import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.common.RobotId
-import com.robotdelivery.domain.delivery.event.DeliveryCompletedEvent
-import com.robotdelivery.domain.delivery.event.DeliveryCreatedEvent
-import com.robotdelivery.domain.delivery.event.DeliveryRobotAssignedEvent
-import com.robotdelivery.domain.delivery.event.DeliveryStartedEvent
+import com.robotdelivery.domain.delivery.event.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -138,7 +135,7 @@ class DeliveryTest {
             delivery.assignRobot(RobotId(1L))
 
             val exception =
-                assertThrows<IllegalArgumentException> {
+                assertThrows<IllegalStateException> {
                     delivery.assignRobot(RobotId(2L))
                 }
             assertTrue(exception.message!!.contains("대기 상태의 배달만 로봇 배차가 가능합니다"))
@@ -268,7 +265,7 @@ class DeliveryTest {
             delivery.assignRobot(RobotId(1L))
 
             val exception =
-                assertThrows<IllegalArgumentException> {
+                assertThrows<IllegalStateException> {
                     delivery.startDelivery()
                 }
             assertTrue(exception.message!!.contains("픽업 중 상태에서만 배송을 시작할 수 있습니다"))
@@ -322,10 +319,117 @@ class DeliveryTest {
             delivery.startDelivery()
 
             val exception =
-                assertThrows<IllegalArgumentException> {
+                assertThrows<IllegalStateException> {
                     delivery.complete()
                 }
             assertTrue(exception.message!!.contains("배달 완료 처리할 수 없는 상태입니다"))
+        }
+    }
+
+    @Nested
+    @DisplayName("배차 취소 테스트")
+    inner class UnassignRobotTest {
+        @Test
+        @DisplayName("ASSIGNED 상태에서 배차를 취소할 수 있다")
+        fun `ASSIGNED 상태에서 배차를 취소할 수 있다`() {
+            val delivery = createDelivery()
+            delivery.assignRobot(RobotId(1L))
+
+            delivery.unassignRobot()
+
+            assertEquals(DeliveryStatus.PENDING, delivery.status)
+            assertNull(delivery.assignedRobotId)
+        }
+
+        @Test
+        @DisplayName("PICKUP_ARRIVED 상태에서 배차를 취소할 수 있다")
+        fun `PICKUP_ARRIVED 상태에서 배차를 취소할 수 있다`() {
+            val delivery = createDelivery()
+            delivery.assignRobot(RobotId(1L))
+            delivery.arrived()
+
+            delivery.unassignRobot()
+
+            assertEquals(DeliveryStatus.PENDING, delivery.status)
+            assertNull(delivery.assignedRobotId)
+        }
+
+        @Test
+        @DisplayName("PICKING_UP 상태에서 배차를 취소할 수 있다")
+        fun `PICKING_UP 상태에서 배차를 취소할 수 있다`() {
+            val delivery = createDelivery()
+            delivery.assignRobot(RobotId(1L))
+            delivery.arrived()
+            delivery.openDoor()
+
+            delivery.unassignRobot()
+
+            assertEquals(DeliveryStatus.PENDING, delivery.status)
+            assertNull(delivery.assignedRobotId)
+        }
+
+        @Test
+        @DisplayName("배차 취소 시 DeliveryRobotUnassignedEvent가 발생한다")
+        fun `배차 취소 시 DeliveryRobotUnassignedEvent가 발생한다`() {
+            val delivery = createDelivery()
+            val robotId = RobotId(1L)
+            delivery.assignRobot(robotId)
+            delivery.pullDomainEvents()
+
+            delivery.unassignRobot()
+            val events = delivery.pullDomainEvents()
+
+            assertEquals(1, events.size)
+            val event = events[0] as DeliveryRobotUnassignedEvent
+            assertEquals(robotId, event.robotId)
+            assertEquals(delivery.getDeliveryId(), event.deliveryId)
+        }
+
+        @Test
+        @DisplayName("PENDING 상태에서 배차 취소하면 예외가 발생한다")
+        fun `PENDING 상태에서 배차 취소하면 예외가 발생한다`() {
+            val delivery = createDelivery()
+
+            val exception =
+                assertThrows<IllegalStateException> {
+                    delivery.unassignRobot()
+                }
+            assertTrue(exception.message!!.contains("배달 출발 전 상태에서만 배차 취소가 가능합니다."))
+        }
+
+        @Test
+        @DisplayName("DELIVERING 상태에서 배차 취소하면 예외가 발생한다")
+        fun `DELIVERING 상태에서 배차 취소하면 예외가 발생한다`() {
+            val delivery = createDelivery()
+            delivery.assignRobot(RobotId(1L))
+            delivery.arrived()
+            delivery.openDoor()
+            delivery.startDelivery()
+
+            val exception =
+                assertThrows<IllegalStateException> {
+                    delivery.unassignRobot()
+                }
+            assertTrue(exception.message!!.contains("배달 출발 전 상태에서만 배차 취소가 가능합니다"))
+        }
+
+        @Test
+        @DisplayName("COMPLETED 상태에서 배차 취소하면 예외가 발생한다")
+        fun `COMPLETED 상태에서 배차 취소하면 예외가 발생한다`() {
+            val delivery = createDelivery()
+            delivery.assignRobot(RobotId(1L))
+            delivery.arrived()
+            delivery.openDoor()
+            delivery.startDelivery()
+            delivery.arrived()
+            delivery.openDoor()
+            delivery.complete()
+
+            val exception =
+                assertThrows<IllegalStateException> {
+                    delivery.unassignRobot()
+                }
+            assertTrue(exception.message!!.contains("배달 출발 전 상태에서만 배차 취소가 가능합니다"))
         }
     }
 
@@ -430,6 +534,210 @@ class DeliveryTest {
             delivery.cancel()
 
             assertEquals(pickupDestination, delivery.getCurrentDestination())
+        }
+    }
+
+    @Nested
+    @DisplayName("배차 변경 테스트")
+    inner class ReassignRobotTest {
+        @Test
+        @DisplayName("ASSIGNED 상태에서 배차 변경할 수 있다")
+        fun `ASSIGNED 상태에서 배차 변경할 수 있다`() {
+            val delivery = createDelivery()
+            val oldRobotId = RobotId(1L)
+            val newRobotId = RobotId(2L)
+            delivery.assignRobot(oldRobotId)
+
+            val destination = delivery.reassignRobot(newRobotId)
+
+            assertEquals(DeliveryStatus.ASSIGNED, delivery.status) // 상태 변함 없음
+            assertEquals(newRobotId, delivery.assignedRobotId)
+            assertEquals(delivery.pickupDestination.location, destination) // 기존 로봇 목적지(픽업지)로
+        }
+
+        @Test
+        @DisplayName("PICKUP_ARRIVED 상태에서 배차 변경하면 픽업지로 간다")
+        fun `PICKUP_ARRIVED 상태에서 배차 변경하면 픽업지로 간다`() {
+            val delivery = createDelivery()
+            val oldRobotId = RobotId(1L)
+            val newRobotId = RobotId(2L)
+            delivery.assignRobot(oldRobotId)
+            delivery.arrived()
+
+            val destination = delivery.reassignRobot(newRobotId)
+
+            assertEquals(DeliveryStatus.PICKUP_ARRIVED, delivery.status)
+            assertEquals(newRobotId, delivery.assignedRobotId)
+            assertEquals(delivery.pickupDestination.location, destination)
+        }
+
+        @Test
+        @DisplayName("PICKING_UP 상태에서 배차 변경하면 픽업지로 간다")
+        fun `PICKING_UP 상태에서 배차 변경하면 픽업지로 간다`() {
+            val delivery = createDelivery()
+            val oldRobotId = RobotId(1L)
+            val newRobotId = RobotId(2L)
+            delivery.assignRobot(oldRobotId)
+            delivery.arrived()
+            delivery.openDoor()
+
+            val destination = delivery.reassignRobot(newRobotId)
+
+            assertEquals(DeliveryStatus.PICKING_UP, delivery.status)
+            assertEquals(newRobotId, delivery.assignedRobotId)
+            assertEquals(delivery.pickupDestination.location, destination)
+        }
+
+        @Test
+        @DisplayName("DELIVERING 상태에서 배차 변경하면 배달지로 간다")
+        fun `DELIVERING 상태에서 배차 변경하면 배달지로 간다`() {
+            val delivery = createDelivery()
+            val oldRobotId = RobotId(1L)
+            val newRobotId = RobotId(2L)
+            delivery.assignRobot(oldRobotId)
+            delivery.arrived()
+            delivery.openDoor()
+            delivery.startDelivery()
+
+            val destination = delivery.reassignRobot(newRobotId)
+
+            assertEquals(DeliveryStatus.DELIVERING, delivery.status)
+            assertEquals(newRobotId, delivery.assignedRobotId)
+            assertEquals(delivery.deliveryDestination.location, destination) // 기존 로봇 목적지(배달지)로
+        }
+
+        @Test
+        @DisplayName("DELIVERY_ARRIVED 상태에서 배차 변경하면 배달지로 간다")
+        fun `DELIVERY_ARRIVED 상태에서 배차 변경하면 배달지로 간다`() {
+            val delivery = createDelivery()
+            val oldRobotId = RobotId(1L)
+            val newRobotId = RobotId(2L)
+            delivery.assignRobot(oldRobotId)
+            delivery.arrived()
+            delivery.openDoor()
+            delivery.startDelivery()
+            delivery.arrived()
+
+            val destination = delivery.reassignRobot(newRobotId)
+
+            assertEquals(DeliveryStatus.DELIVERY_ARRIVED, delivery.status)
+            assertEquals(newRobotId, delivery.assignedRobotId)
+            assertEquals(delivery.deliveryDestination.location, destination)
+        }
+
+        @Test
+        @DisplayName("DROPPING_OFF 상태에서 배차 변경하면 배달지로 간다")
+        fun `DROPPING_OFF 상태에서 배차 변경하면 배달지로 간다`() {
+            val delivery = createDelivery()
+            val oldRobotId = RobotId(1L)
+            val newRobotId = RobotId(2L)
+            delivery.assignRobot(oldRobotId)
+            delivery.arrived()
+            delivery.openDoor()
+            delivery.startDelivery()
+            delivery.arrived()
+            delivery.openDoor()
+
+            val destination = delivery.reassignRobot(newRobotId)
+
+            assertEquals(DeliveryStatus.DROPPING_OFF, delivery.status)
+            assertEquals(newRobotId, delivery.assignedRobotId)
+            assertEquals(delivery.deliveryDestination.location, destination)
+        }
+
+        @Test
+        @DisplayName("배차 변경 시 DeliveryRobotReassignedEvent가 발생한다")
+        fun `배차 변경 시 DeliveryRobotReassignedEvent가 발생한다`() {
+            val delivery = createDelivery()
+            val oldRobotId = RobotId(1L)
+            val newRobotId = RobotId(2L)
+            delivery.assignRobot(oldRobotId)
+            delivery.pullDomainEvents()
+
+            delivery.reassignRobot(newRobotId)
+            val events = delivery.pullDomainEvents()
+
+            assertEquals(1, events.size)
+            val event = events[0] as DeliveryRobotReassignedEvent
+            assertEquals(oldRobotId, event.previousRobotId)
+            assertEquals(newRobotId, event.newRobotId)
+            assertEquals(delivery.pickupDestination.location, event.newRobotDestination)
+        }
+
+        @Test
+        @DisplayName("PENDING 상태에서 배차 변경하면 예외가 발생한다")
+        fun `PENDING 상태에서 배차 변경하면 예외가 발생한다`() {
+            val delivery = createDelivery()
+            val newRobotId = RobotId(2L)
+
+            val exception =
+                assertThrows<IllegalStateException> {
+                    delivery.reassignRobot(newRobotId)
+                }
+            assertTrue(exception.message!!.contains("배차 변경이 불가능한 상태입니다"))
+        }
+
+        @Test
+        @DisplayName("COMPLETED 상태에서 배차 변경하면 예외가 발생한다")
+        fun `COMPLETED 상태에서 배차 변경하면 예외가 발생한다`() {
+            val delivery = createDelivery()
+            delivery.assignRobot(RobotId(1L))
+            delivery.arrived()
+            delivery.openDoor()
+            delivery.startDelivery()
+            delivery.arrived()
+            delivery.openDoor()
+            delivery.complete()
+
+            val exception =
+                assertThrows<IllegalStateException> {
+                    delivery.reassignRobot(RobotId(2L))
+                }
+            assertTrue(exception.message!!.contains("배차 변경이 불가능한 상태입니다"))
+        }
+
+        @Test
+        @DisplayName("CANCELED 상태에서 배차 변경하면 예외가 발생한다")
+        fun `CANCELED 상태에서 배차 변경하면 예외가 발생한다`() {
+            val delivery = createDelivery()
+            delivery.cancel()
+
+            val exception =
+                assertThrows<IllegalStateException> {
+                    delivery.reassignRobot(RobotId(2L))
+                }
+            assertTrue(exception.message!!.contains("배차 변경이 불가능한 상태입니다"))
+        }
+
+        @Test
+        @DisplayName("RETURNING 상태에서 배차 변경하면 예외가 발생한다")
+        fun `RETURNING 상태에서 배차 변경하면 예외가 발생한다`() {
+            val delivery = createDelivery()
+            delivery.assignRobot(RobotId(1L))
+            delivery.arrived()
+            delivery.openDoor()
+            delivery.startDelivery()
+            delivery.cancel() // RETURNING으로 전이
+
+            val exception =
+                assertThrows<IllegalStateException> {
+                    delivery.reassignRobot(RobotId(2L))
+                }
+            assertTrue(exception.message!!.contains("배차 변경이 불가능한 상태입니다"))
+        }
+
+        @Test
+        @DisplayName("동일한 로봇으로 배차 변경하면 예외가 발생한다")
+        fun `동일한 로봇으로 배차 변경하면 예외가 발생한다`() {
+            val delivery = createDelivery()
+            val robotId = RobotId(1L)
+            delivery.assignRobot(robotId)
+
+            val exception =
+                assertThrows<IllegalStateException> {
+                    delivery.reassignRobot(robotId)
+                }
+            assertTrue(exception.message!!.contains("동일한 로봇으로는 배차 변경할 수 없습니다"))
         }
     }
 

@@ -411,7 +411,7 @@ class DeliveryServiceTest {
             whenever(robotRepository.findById(delivery.assignedRobotId!!)).thenReturn(robot)
 
             val exception =
-                assertThrows<IllegalArgumentException> {
+                assertThrows<IllegalStateException> {
                     deliveryService.startDelivery(delivery.getDeliveryId())
                 }
 
@@ -488,7 +488,7 @@ class DeliveryServiceTest {
             whenever(robotRepository.findById(delivery.assignedRobotId!!)).thenReturn(robot)
 
             val exception =
-                assertThrows<IllegalArgumentException> {
+                assertThrows<IllegalStateException> {
                     deliveryService.completeReturn(delivery.getDeliveryId())
                 }
 
@@ -639,6 +639,112 @@ class DeliveryServiceTest {
                 }
 
             assertTrue(exception.message!!.contains("취소할 수 없는 상태입니다"))
+        }
+    }
+
+    @Nested
+    @DisplayName("배차 취소 테스트")
+    inner class UnassignRobotTest {
+        @Test
+        @DisplayName("배차를 성공적으로 취소한다")
+        fun `배차를 성공적으로 취소한다`() {
+            val delivery = createDeliveryInAssignedState()
+            val robot = createRobotWithDelivery(delivery)
+            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
+            whenever(robotRepository.findById(delivery.assignedRobotId!!)).thenReturn(robot)
+
+            deliveryService.unassignRobot(delivery.getDeliveryId())
+
+            assertEquals(DeliveryStatus.PENDING, delivery.status)
+            assertNull(delivery.assignedRobotId)
+            verify(deliveryRepository).save(delivery)
+        }
+
+        @Test
+        @DisplayName("배차 취소 시 로봇이 READY 상태가 된다")
+        fun `배차 취소 시 로봇이 READY 상태가 된다`() {
+            val delivery = createDeliveryInAssignedState()
+            val robot = createRobotWithDelivery(delivery)
+            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
+            whenever(robotRepository.findById(delivery.assignedRobotId!!)).thenReturn(robot)
+
+            deliveryService.unassignRobot(delivery.getDeliveryId())
+
+            assertEquals(RobotStatus.READY, robot.status)
+            assertNull(robot.currentDeliveryId)
+            verify(robotRepository).save(robot)
+        }
+
+        @Test
+        @DisplayName("PICKUP_ARRIVED 상태에서 배차를 취소할 수 있다")
+        fun `PICKUP_ARRIVED 상태에서 배차를 취소할 수 있다`() {
+            val delivery = createDeliveryInPickupArrivedState()
+            val robot = createRobotWithDelivery(delivery)
+            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
+            whenever(robotRepository.findById(delivery.assignedRobotId!!)).thenReturn(robot)
+
+            deliveryService.unassignRobot(delivery.getDeliveryId())
+
+            assertEquals(DeliveryStatus.PENDING, delivery.status)
+            assertEquals(RobotStatus.READY, robot.status)
+        }
+
+        @Test
+        @DisplayName("PICKING_UP 상태에서 배차를 취소할 수 있다")
+        fun `PICKING_UP 상태에서 배차를 취소할 수 있다`() {
+            val delivery = createDeliveryInPickingUpState()
+            val robot = createRobotWithDelivery(delivery)
+            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
+            whenever(robotRepository.findById(delivery.assignedRobotId!!)).thenReturn(robot)
+
+            deliveryService.unassignRobot(delivery.getDeliveryId())
+
+            assertEquals(DeliveryStatus.PENDING, delivery.status)
+            assertEquals(RobotStatus.READY, robot.status)
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 배달 ID로 배차 취소 시 예외가 발생한다")
+        fun `존재하지 않는 배달 ID로 배차 취소 시 예외가 발생한다`() {
+            val deliveryId = DeliveryId(99999L)
+            whenever(deliveryRepository.findById(deliveryId)).thenReturn(null)
+
+            val exception =
+                assertThrows<IllegalArgumentException> {
+                    deliveryService.unassignRobot(deliveryId)
+                }
+
+            assertEquals("배달을 찾을 수 없습니다: 99999", exception.message)
+        }
+
+        @Test
+        @DisplayName("배차되지 않은 배달의 배차 취소 시 예외가 발생한다")
+        fun `배차되지 않은 배달의 배차 취소 시 예외가 발생한다`() {
+            val delivery = createDelivery(1L)
+            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
+
+            val exception =
+                assertThrows<IllegalStateException> {
+                    deliveryService.unassignRobot(delivery.getDeliveryId())
+                }
+
+            assertEquals("배차된 로봇이 없습니다.", exception.message)
+        }
+
+        @Test
+        @DisplayName("배달 출발 후에는 배차 취소할 수 없다")
+        fun `배달 출발 후에는 배차 취소할 수 없다`() {
+            val delivery = createDeliveryInDeliveringState()
+            val robot = createRobotWithDelivery(delivery)
+            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
+            whenever(robotRepository.findById(delivery.assignedRobotId!!)).thenReturn(robot)
+
+            val exception =
+                assertThrows<IllegalStateException> {
+                    deliveryService.unassignRobot(delivery.getDeliveryId())
+                }
+
+            assertTrue(exception.message!!.contains("배달 출발 전 상태에서만 배차 취소가 가능합니다"))
         }
     }
 

@@ -114,7 +114,7 @@ class RobotTest {
             val robot = createRobot(status = RobotStatus.BUSY, currentDeliveryId = DeliveryId(1L))
 
             val exception =
-                assertThrows<IllegalArgumentException> {
+                assertThrows<IllegalStateException> {
                     robot.endDuty()
                 }
             assertTrue(
@@ -129,7 +129,7 @@ class RobotTest {
             val robot = createRobot()
 
             val exception =
-                assertThrows<IllegalArgumentException> {
+                assertThrows<IllegalStateException> {
                     robot.endDuty()
                 }
             assertTrue(exception.message!!.contains("퇴근할 수 없는 상태입니다"))
@@ -174,7 +174,7 @@ class RobotTest {
             val pickupLocation = Location(latitude = 37.5665, longitude = 126.9780)
 
             val exception =
-                assertThrows<IllegalArgumentException> {
+                assertThrows<IllegalStateException> {
                     robot.assignDelivery(DeliveryId(1L), pickupLocation)
                 }
             assertTrue(exception.message!!.contains("배달을 받을 수 없는 상태입니다"))
@@ -187,7 +187,7 @@ class RobotTest {
             val pickupLocation = Location(latitude = 37.5665, longitude = 126.9780)
 
             val exception =
-                assertThrows<IllegalArgumentException> {
+                assertThrows<IllegalStateException> {
                     robot.assignDelivery(DeliveryId(2L), pickupLocation)
                 }
             assertTrue(
@@ -229,10 +229,73 @@ class RobotTest {
             val robot = createRobot(status = RobotStatus.READY)
 
             val exception =
-                assertThrows<IllegalArgumentException> {
+                assertThrows<IllegalStateException> {
                     robot.completeDelivery()
                 }
             assertTrue(exception.message!!.contains("배달 수행 중이 아닙니다"))
+        }
+    }
+
+    @Nested
+    @DisplayName("배차 취소 테스트")
+    inner class UnassignDeliveryTest {
+        @Test
+        @DisplayName("BUSY 상태에서 배차를 취소할 수 있다")
+        fun `BUSY 상태에서 배차를 취소할 수 있다`() {
+            val robot = createRobot(status = RobotStatus.BUSY, currentDeliveryId = DeliveryId(1L))
+
+            robot.unassignDelivery()
+
+            assertEquals(RobotStatus.READY, robot.status)
+            assertNull(robot.currentDeliveryId)
+        }
+
+        @Test
+        @DisplayName("배차 취소 시 destination이 null로 설정된다")
+        fun `배차 취소 시 destination이 null로 설정된다`() {
+            val robot = createRobot(status = RobotStatus.READY)
+            val pickupLocation = Location(latitude = 37.5000, longitude = 127.0000)
+            robot.assignDelivery(DeliveryId(1L), pickupLocation)
+
+            robot.unassignDelivery()
+
+            assertNull(robot.destination)
+        }
+
+        @Test
+        @DisplayName("배차 취소 시 RobotBecameAvailableEvent가 발생한다")
+        fun `배차 취소 시 RobotBecameAvailableEvent가 발생한다`() {
+            val robot = createRobot(status = RobotStatus.BUSY, currentDeliveryId = DeliveryId(1L))
+
+            robot.unassignDelivery()
+            val events = robot.pullDomainEvents()
+
+            assertEquals(1, events.size)
+            assertTrue(events[0] is RobotBecameAvailableEvent)
+        }
+
+        @Test
+        @DisplayName("READY 상태에서 배차 취소하면 예외가 발생한다")
+        fun `READY 상태에서 배차 취소하면 예외가 발생한다`() {
+            val robot = createRobot(status = RobotStatus.READY)
+
+            val exception =
+                assertThrows<IllegalStateException> {
+                    robot.unassignDelivery()
+                }
+            assertTrue(exception.message!!.contains("배달 수행 중이 아닙니다"))
+        }
+
+        @Test
+        @DisplayName("할당된 배달이 없으면 예외가 발생한다")
+        fun `할당된 배달이 없으면 예외가 발생한다`() {
+            val robot = createRobot(status = RobotStatus.BUSY, currentDeliveryId = null)
+
+            val exception =
+                assertThrows<IllegalStateException> {
+                    robot.unassignDelivery()
+                }
+            assertTrue(exception.message!!.contains("할당된 배달이 없습니다"))
         }
     }
 
@@ -483,7 +546,7 @@ class RobotTest {
             val destination = Location(latitude = 37.5000, longitude = 127.0000)
 
             val exception =
-                assertThrows<IllegalArgumentException> {
+                assertThrows<IllegalStateException> {
                     robot.navigateTo(destination)
                 }
             assertTrue(exception.message!!.contains("배달 수행 중이 아닙니다"))
@@ -496,7 +559,7 @@ class RobotTest {
             val destination = Location(latitude = 37.5000, longitude = 127.0000)
 
             val exception =
-                assertThrows<IllegalArgumentException> {
+                assertThrows<IllegalStateException> {
                     robot.navigateTo(destination)
                 }
             assertTrue(exception.message!!.contains("배달 수행 중이 아닙니다"))
