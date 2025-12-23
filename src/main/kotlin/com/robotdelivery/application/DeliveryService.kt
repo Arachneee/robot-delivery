@@ -6,7 +6,9 @@ import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.delivery.Delivery
 import com.robotdelivery.domain.delivery.DeliveryRepository
 import com.robotdelivery.domain.delivery.Destination
+import com.robotdelivery.domain.delivery.getById
 import com.robotdelivery.domain.robot.RobotRepository
+import com.robotdelivery.domain.robot.getById
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -51,17 +53,13 @@ class DeliveryService(
     }
 
     fun completeDelivery(deliveryId: DeliveryId) {
-        val delivery =
-            deliveryRepository.findById(deliveryId)
-                ?: throw IllegalArgumentException("배달을 찾을 수 없습니다: $deliveryId")
+        val delivery = deliveryRepository.getById(deliveryId)
 
         val robotId =
             delivery.assignedRobotId
                 ?: throw IllegalStateException("배차된 로봇이 없습니다.")
 
-        val robot =
-            robotRepository.findById(robotId)
-                ?: throw IllegalStateException("로봇을 찾을 수 없습니다: $robotId")
+        val robot = robotRepository.getById(robotId)
 
         delivery.complete()
         robot.completeDelivery()
@@ -71,9 +69,7 @@ class DeliveryService(
     }
 
     fun openDoor(deliveryId: DeliveryId) {
-        val delivery =
-            deliveryRepository.findById(deliveryId)
-                ?: throw IllegalArgumentException("배달을 찾을 수 없습니다: $deliveryId")
+        val delivery = deliveryRepository.getById(deliveryId)
 
         val robotId =
             delivery.assignedRobotId
@@ -86,17 +82,13 @@ class DeliveryService(
     }
 
     fun startDelivery(deliveryId: DeliveryId) {
-        val delivery =
-            deliveryRepository.findById(deliveryId)
-                ?: throw IllegalArgumentException("배달을 찾을 수 없습니다: $deliveryId")
+        val delivery = deliveryRepository.getById(deliveryId)
 
         val robotId =
             delivery.assignedRobotId
                 ?: throw IllegalStateException("배차된 로봇이 없습니다.")
 
-        val robot =
-            robotRepository.findById(robotId)
-                ?: throw IllegalStateException("로봇을 찾을 수 없습니다: $robotId")
+        val robot = robotRepository.getById(robotId)
 
         delivery.startDelivery()
         robot.navigateTo(delivery.deliveryDestination.location)
@@ -106,22 +98,42 @@ class DeliveryService(
     }
 
     fun completeReturn(deliveryId: DeliveryId) {
-        val delivery =
-            deliveryRepository.findById(deliveryId)
-                ?: throw IllegalArgumentException("배달을 찾을 수 없습니다: $deliveryId")
+        val delivery = deliveryRepository.getById(deliveryId)
 
         val robotId =
             delivery.assignedRobotId
                 ?: throw IllegalStateException("배차된 로봇이 없습니다.")
 
-        val robot =
-            robotRepository.findById(robotId)
-                ?: throw IllegalStateException("로봇을 찾을 수 없습니다: $robotId")
+        val robot = robotRepository.getById(robotId)
 
         delivery.completeReturn()
         robot.completeDelivery()
 
         deliveryRepository.save(delivery)
         robotRepository.save(robot)
+    }
+
+    fun cancelDelivery(deliveryId: DeliveryId): Boolean {
+        val delivery = deliveryRepository.getById(deliveryId)
+
+        val requiresReturn = delivery.status.requiresReturn()
+
+        delivery.cancel()
+
+        val robotId = delivery.assignedRobotId
+        if (robotId != null) {
+            val robot = robotRepository.getById(robotId)
+
+            if (requiresReturn) {
+                robot.navigateTo(delivery.pickupDestination.location)
+            } else {
+                robot.completeDelivery()
+            }
+            robotRepository.save(robot)
+        }
+
+        deliveryRepository.save(delivery)
+
+        return requiresReturn
     }
 }
