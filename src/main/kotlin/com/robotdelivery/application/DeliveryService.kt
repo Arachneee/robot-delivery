@@ -3,6 +3,7 @@ package com.robotdelivery.application
 import com.robotdelivery.application.client.RobotClient
 import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.common.Location
+import com.robotdelivery.domain.common.RobotId
 import com.robotdelivery.domain.delivery.Delivery
 import com.robotdelivery.domain.delivery.DeliveryRepository
 import com.robotdelivery.domain.delivery.Destination
@@ -135,5 +136,50 @@ class DeliveryService(
         deliveryRepository.save(delivery)
 
         return requiresReturn
+    }
+
+    fun unassignRobot(deliveryId: DeliveryId) {
+        val delivery = deliveryRepository.getById(deliveryId)
+
+        val robotId =
+            delivery.assignedRobotId
+                ?: throw IllegalStateException("배차된 로봇이 없습니다.")
+
+        val robot = robotRepository.getById(robotId)
+
+        delivery.unassignRobot()
+        robot.unassignDelivery()
+
+        deliveryRepository.save(delivery)
+        robotRepository.save(robot)
+    }
+
+    fun reassignRobot(
+        deliveryId: DeliveryId,
+        newRobotId: RobotId,
+    ): RobotId {
+        val delivery = deliveryRepository.getById(deliveryId)
+
+        val previousRobotId =
+            delivery.assignedRobotId
+                ?: throw IllegalStateException("배차된 로봇이 없습니다.")
+
+        val previousRobot = robotRepository.getById(previousRobotId)
+        val newRobot = robotRepository.getById(newRobotId)
+
+        check(newRobot.isAvailable()) {
+            "새 로봇이 배차 가능한 상태가 아닙니다."
+        }
+
+        val newRobotDestination = delivery.reassignRobot(newRobotId)
+
+        previousRobot.unassignDelivery()
+        newRobot.assignDelivery(deliveryId, newRobotDestination)
+
+        deliveryRepository.save(delivery)
+        robotRepository.save(previousRobot)
+        robotRepository.save(newRobot)
+
+        return previousRobotId
     }
 }
