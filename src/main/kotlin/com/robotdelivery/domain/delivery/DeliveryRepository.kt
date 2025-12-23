@@ -8,3 +8,6 @@ interface DeliveryRepository : JpaRepository<Delivery, Long> {
 
     fun findAllByStatus(deliveryStatus: DeliveryStatus): List<Delivery>
 }
+
+fun DeliveryRepository.getById(id: DeliveryId): Delivery =
+    findById(id) ?: throw IllegalArgumentException("배달을 찾을 수 없습니다: $id")
