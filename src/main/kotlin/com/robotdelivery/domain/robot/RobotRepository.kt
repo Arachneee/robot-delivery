@@ -9,5 +9,4 @@ interface RobotRepository : JpaRepository<Robot, Long> {
     fun findAllByStatus(status: RobotStatus): List<Robot>
 }
 
-fun RobotRepository.getById(id: RobotId): Robot =
-    findById(id) ?: throw IllegalStateException("로봇을 찾을 수 없습니다: $id")
+fun RobotRepository.getById(id: RobotId): Robot = findById(id) ?: throw IllegalArgumentException("로봇을 찾을 수 없습니다: $id")
