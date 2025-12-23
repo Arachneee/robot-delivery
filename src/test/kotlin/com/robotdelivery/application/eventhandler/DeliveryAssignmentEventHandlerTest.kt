@@ -106,7 +106,7 @@ class DeliveryAssignmentEventHandlerTest {
                 robot
             }
 
-            eventHandler.dispatch(event)
+            eventHandler.handle(event)
 
             assertEquals(DeliveryStatus.ASSIGNED, delivery.status)
             assertEquals(robot.getRobotId(), delivery.assignedRobotId)
@@ -128,7 +128,7 @@ class DeliveryAssignmentEventHandlerTest {
             whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
             whenever(assignmentService.assignNearestRobotToDelivery(delivery)).thenReturn(null)
 
-            eventHandler.dispatch(event)
+            eventHandler.handle(event)
 
             assertEquals(DeliveryStatus.PENDING, delivery.status)
             assertNull(delivery.assignedRobotId)
@@ -148,7 +148,7 @@ class DeliveryAssignmentEventHandlerTest {
 
             whenever(deliveryRepository.findById(DeliveryId(99999L))).thenReturn(null)
 
-            eventHandler.dispatch(event)
+            eventHandler.handle(event)
 
             verify(deliveryRepository, never()).save(any())
             verify(robotRepository, never()).save(any())
@@ -174,7 +174,7 @@ class DeliveryAssignmentEventHandlerTest {
                 nearRobot
             }
 
-            eventHandler.dispatch(event)
+            eventHandler.handle(event)
 
             assertEquals(nearRobot.getRobotId(), delivery.assignedRobotId)
         }
@@ -202,7 +202,7 @@ class DeliveryAssignmentEventHandlerTest {
                 delivery
             }
 
-            eventHandler.dispatch(event)
+            eventHandler.handle(event)
 
             assertEquals(DeliveryStatus.ASSIGNED, delivery.status)
             assertEquals(robot.getRobotId(), delivery.assignedRobotId)
@@ -225,7 +225,7 @@ class DeliveryAssignmentEventHandlerTest {
             whenever(robotRepository.findById(robot.getRobotId())).thenReturn(robot)
             whenever(assignmentService.assignNearestDeliveryToRobot(robot)).thenReturn(null)
 
-            eventHandler.dispatch(event)
+            eventHandler.handle(event)
 
             assertEquals(RobotStatus.READY, robot.status)
             assertNull(robot.currentDeliveryId)
@@ -244,7 +244,7 @@ class DeliveryAssignmentEventHandlerTest {
 
             whenever(robotRepository.findById(RobotId(99999L))).thenReturn(null)
 
-            eventHandler.dispatch(event)
+            eventHandler.handle(event)
 
             verify(deliveryRepository, never()).save(any())
             verify(robotRepository, never()).save(any())
@@ -270,7 +270,7 @@ class DeliveryAssignmentEventHandlerTest {
             whenever(robotRepository.findById(robot.getRobotId())).thenReturn(robot)
             whenever(assignmentService.assignNearestDeliveryToRobot(robot)).thenReturn(null)
 
-            eventHandler.dispatch(event)
+            eventHandler.handle(event)
 
             verify(deliveryRepository, never()).save(any())
             verify(robotRepository, never()).save(any())
@@ -295,7 +295,7 @@ class DeliveryAssignmentEventHandlerTest {
                 nearDelivery
             }
 
-            eventHandler.dispatch(event)
+            eventHandler.handle(event)
 
             assertEquals(nearDelivery.getDeliveryId(), robot.currentDeliveryId)
         }

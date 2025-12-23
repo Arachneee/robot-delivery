@@ -1,10 +1,8 @@
 package com.robotdelivery.application.eventhandler
 
-import com.robotdelivery.domain.delivery.Delivery
 import com.robotdelivery.domain.delivery.DeliveryAssignmentService
 import com.robotdelivery.domain.delivery.DeliveryRepository
 import com.robotdelivery.domain.delivery.event.DeliveryCreatedEvent
-import com.robotdelivery.domain.robot.Robot
 import com.robotdelivery.domain.robot.RobotRepository
 import com.robotdelivery.domain.robot.event.RobotBecameAvailableEvent
 import org.slf4j.LoggerFactory
@@ -22,7 +20,7 @@ class DeliveryAssignmentEventHandler(
 
     @Async
     @TransactionalEventListener(fallbackExecution = true)
-    fun dispatch(event: DeliveryCreatedEvent) {
+    fun handle(event: DeliveryCreatedEvent) {
         log.info("DeliveryCreatedEvent 수신: deliveryId={}", event.deliveryId)
 
         val delivery =
@@ -37,12 +35,13 @@ class DeliveryAssignmentEventHandler(
             }
 
         log.info("로봇 배정 완료: delivery={}, robot={}", delivery, robot)
-        saveAndPublishEvents(delivery, robot)
+        deliveryRepository.save(delivery)
+        robotRepository.save(robot)
     }
 
     @Async
     @TransactionalEventListener(fallbackExecution = true)
-    fun dispatch(event: RobotBecameAvailableEvent) {
+    fun handle(event: RobotBecameAvailableEvent) {
         log.info("RobotBecameAvailableEvent 수신: robotId={}", event.robotId)
 
         val robot =
@@ -57,13 +56,6 @@ class DeliveryAssignmentEventHandler(
             }
 
         log.info("배달 배정 완료: robot={}, delivery={}", robot, delivery)
-        saveAndPublishEvents(delivery, robot)
-    }
-
-    private fun saveAndPublishEvents(
-        delivery: Delivery,
-        robot: Robot,
-    ) {
         deliveryRepository.save(delivery)
         robotRepository.save(robot)
     }
