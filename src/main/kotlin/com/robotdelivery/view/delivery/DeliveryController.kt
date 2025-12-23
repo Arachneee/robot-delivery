@@ -2,6 +2,7 @@ package com.robotdelivery.view.delivery
 
 import com.robotdelivery.application.DeliveryService
 import com.robotdelivery.domain.common.DeliveryId
+import com.robotdelivery.domain.common.RobotId
 import com.robotdelivery.view.delivery.dto.*
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -118,6 +119,43 @@ class DeliveryController(
                 deliveryId = deliveryId,
                 requiresReturn = requiresReturn,
                 message = message,
+            )
+
+        return ResponseEntity.ok(response)
+    }
+
+    @PostMapping("/{deliveryId}/unassign-robot")
+    fun unassignRobot(
+        @PathVariable deliveryId: Long,
+    ): ResponseEntity<UnassignRobotResponse> {
+        deliveryService.unassignRobot(DeliveryId(deliveryId))
+
+        val response =
+            UnassignRobotResponse(
+                deliveryId = deliveryId,
+                message = "배차가 취소되었습니다.",
+            )
+
+        return ResponseEntity.ok(response)
+    }
+
+    @PostMapping("/{deliveryId}/reassign-robot")
+    fun reassignRobot(
+        @PathVariable deliveryId: Long,
+        @RequestBody request: ReassignRobotRequest,
+    ): ResponseEntity<ReassignRobotResponse> {
+        val previousRobotId =
+            deliveryService.reassignRobot(
+                DeliveryId(deliveryId),
+                RobotId(request.newRobotId),
+            )
+
+        val response =
+            ReassignRobotResponse(
+                deliveryId = deliveryId,
+                previousRobotId = previousRobotId.value,
+                newRobotId = request.newRobotId,
+                message = "배차가 변경되었습니다.",
             )
 
         return ResponseEntity.ok(response)
