@@ -13,14 +13,15 @@ enum class DeliveryStatus {
     RETURNING,
     RETURN_ARRIVED,
     RETURNING_OFF,
-    RETURN_COMPLETED;
+    RETURN_COMPLETED,
+    ;
 
-    fun canTransitionTo(nextStatus: DeliveryStatus): Boolean {
-        return when (this) {
+    fun canTransitionTo(nextStatus: DeliveryStatus): Boolean =
+        when (this) {
             PENDING -> nextStatus in listOf(ASSIGNED, CANCELED)
-            ASSIGNED -> nextStatus in listOf(PICKUP_ARRIVED, CANCELED)
-            PICKUP_ARRIVED -> nextStatus in listOf(PICKING_UP, CANCELED)
-            PICKING_UP -> nextStatus in listOf(DELIVERING, RETURNING)
+            ASSIGNED -> nextStatus in listOf(PICKUP_ARRIVED, CANCELED, PENDING)
+            PICKUP_ARRIVED -> nextStatus in listOf(PICKING_UP, CANCELED, PENDING)
+            PICKING_UP -> nextStatus in listOf(DELIVERING, RETURNING, PENDING)
             DELIVERING -> nextStatus in listOf(DELIVERY_ARRIVED, RETURNING)
             DELIVERY_ARRIVED -> nextStatus in listOf(DROPPING_OFF, RETURNING)
             DROPPING_OFF -> nextStatus in listOf(COMPLETED, RETURNING)
@@ -31,13 +32,12 @@ enum class DeliveryStatus {
             RETURNING_OFF -> nextStatus == RETURN_COMPLETED
             RETURN_COMPLETED -> false
         }
-    }
 
-    fun isCancelable(): Boolean {
-        return this in listOf(PENDING, ASSIGNED, PICKUP_ARRIVED)
-    }
+    fun requiresReturn(): Boolean = this in listOf(PICKING_UP, DELIVERING, DELIVERY_ARRIVED, DROPPING_OFF)
 
-    fun requiresReturn(): Boolean {
-        return this in listOf(PICKING_UP, DELIVERING, DELIVERY_ARRIVED, DROPPING_OFF)
-    }
+    fun isCancelable(): Boolean = this in listOf(PENDING, ASSIGNED, PICKUP_ARRIVED)
+
+    fun isUnassignable(): Boolean = this in listOf(DeliveryStatus.ASSIGNED, DeliveryStatus.PICKUP_ARRIVED, DeliveryStatus.PICKING_UP)
+
+    fun isReassignable(): Boolean = this in listOf(ASSIGNED, PICKUP_ARRIVED, PICKING_UP, DELIVERING, DELIVERY_ARRIVED, DROPPING_OFF)
 }
