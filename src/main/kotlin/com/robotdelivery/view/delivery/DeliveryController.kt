@@ -1,8 +1,8 @@
-package com.robotdelivery.presentation.delivery
+package com.robotdelivery.view.delivery
 
 import com.robotdelivery.application.DeliveryService
 import com.robotdelivery.domain.common.DeliveryId
-import com.robotdelivery.presentation.delivery.dto.*
+import com.robotdelivery.view.delivery.dto.*
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import java.net.URI
@@ -95,6 +95,29 @@ class DeliveryController(
             OpenDoorResponse(
                 deliveryId = deliveryId,
                 message = "로봇 문이 열렸습니다.",
+            )
+
+        return ResponseEntity.ok(response)
+    }
+
+    @PostMapping("/{deliveryId}/cancel")
+    fun cancelDelivery(
+        @PathVariable deliveryId: Long,
+    ): ResponseEntity<CancelDeliveryResponse> {
+        val requiresReturn = deliveryService.cancelDelivery(DeliveryId(deliveryId))
+
+        val message =
+            if (requiresReturn) {
+                "배달이 취소되었습니다. 물품이 픽업 위치로 회수됩니다."
+            } else {
+                "배달이 취소되었습니다."
+            }
+
+        val response =
+            CancelDeliveryResponse(
+                deliveryId = deliveryId,
+                requiresReturn = requiresReturn,
+                message = message,
             )
 
         return ResponseEntity.ok(response)

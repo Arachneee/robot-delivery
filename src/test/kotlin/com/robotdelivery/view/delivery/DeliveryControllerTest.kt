@@ -1,11 +1,10 @@
-package com.robotdelivery.presentation.delivery
+package com.robotdelivery.view.delivery
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.robotdelivery.application.DeliveryService
 import com.robotdelivery.domain.common.DeliveryId
-import com.robotdelivery.presentation.delivery.dto.CreateDeliveryRequest
-import org.junit.jupiter.api.BeforeEach
+import com.robotdelivery.view.delivery.dto.CreateDeliveryRequest
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -268,6 +267,82 @@ class DeliveryControllerTest {
                         fieldWithPath("deliveryId")
                             .type(JsonFieldType.NUMBER)
                             .description("회수 완료된 배달 ID"),
+                        fieldWithPath("message")
+                            .type(JsonFieldType.STRING)
+                            .description("응답 메시지"),
+                    ),
+                ),
+            )
+    }
+
+    @Test
+    @DisplayName("배달 취소 API - 단순 취소 성공")
+    fun `배달 취소 API 단순 취소 성공`() {
+        // given
+        val deliveryId = 1L
+        whenever(deliveryService.cancelDelivery(DeliveryId(deliveryId))).thenReturn(false)
+
+        // when & then
+        mockMvc
+            .perform(
+                post("/api/deliveries/{deliveryId}/cancel", deliveryId),
+            ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.deliveryId").value(deliveryId))
+            .andExpect(jsonPath("$.requiresReturn").value(false))
+            .andExpect(jsonPath("$.message").value("배달이 취소되었습니다."))
+            .andDo(
+                document(
+                    "delivery-cancel",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    pathParameters(
+                        parameterWithName("deliveryId").description("배달 ID"),
+                    ),
+                    responseFields(
+                        fieldWithPath("deliveryId")
+                            .type(JsonFieldType.NUMBER)
+                            .description("취소된 배달 ID"),
+                        fieldWithPath("requiresReturn")
+                            .type(JsonFieldType.BOOLEAN)
+                            .description("물품 회수 필요 여부"),
+                        fieldWithPath("message")
+                            .type(JsonFieldType.STRING)
+                            .description("응답 메시지"),
+                    ),
+                ),
+            )
+    }
+
+    @Test
+    @DisplayName("배달 취소 API - 회수가 필요한 취소 성공")
+    fun `배달 취소 API 회수가 필요한 취소 성공`() {
+        // given
+        val deliveryId = 1L
+        whenever(deliveryService.cancelDelivery(DeliveryId(deliveryId))).thenReturn(true)
+
+        // when & then
+        mockMvc
+            .perform(
+                post("/api/deliveries/{deliveryId}/cancel", deliveryId),
+            ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.deliveryId").value(deliveryId))
+            .andExpect(jsonPath("$.requiresReturn").value(true))
+            .andExpect(jsonPath("$.message").value("배달이 취소되었습니다. 물품이 픽업 위치로 회수됩니다."))
+            .andDo(
+                document(
+                    "delivery-cancel-with-return",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    pathParameters(
+                        parameterWithName("deliveryId").description("배달 ID"),
+                    ),
+                    responseFields(
+                        fieldWithPath("deliveryId")
+                            .type(JsonFieldType.NUMBER)
+                            .description("취소된 배달 ID"),
+                        fieldWithPath("requiresReturn")
+                            .type(JsonFieldType.BOOLEAN)
+                            .description("물품 회수 필요 여부"),
                         fieldWithPath("message")
                             .type(JsonFieldType.STRING)
                             .description("응답 메시지"),

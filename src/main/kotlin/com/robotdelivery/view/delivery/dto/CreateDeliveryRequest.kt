@@ -1,4 +1,4 @@
-package com.robotdelivery.presentation.delivery.dto
+package com.robotdelivery.view.delivery.dto
 
 data class CreateDeliveryRequest(
     val pickupAddress: String,
