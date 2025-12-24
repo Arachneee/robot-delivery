@@ -56,8 +56,26 @@ data class CancelDeliveryResponse(
 
 data class ReassignRobotResponse(
     override val deliveryId: Long,
-    val previousRobotId: Long,
+    val previousRobotId: Long?,
     val newRobotId: Long,
-    override val message: String = "배차가 변경되었습니다.",
-) : DeliveryResponse(deliveryId, message)
+    override val message: String,
+) : DeliveryResponse(deliveryId, message) {
+    companion object {
+        fun of(
+            deliveryId: Long,
+            previousRobotId: Long?,
+            newRobotId: Long,
+        ): ReassignRobotResponse =
+            ReassignRobotResponse(
+                deliveryId = deliveryId,
+                previousRobotId = previousRobotId,
+                newRobotId = newRobotId,
+                message = if (previousRobotId == null) {
+                    "로봇이 배차되었습니다."
+                } else {
+                    "배차가 변경되었습니다."
+                },
+            )
+    }
+}
 

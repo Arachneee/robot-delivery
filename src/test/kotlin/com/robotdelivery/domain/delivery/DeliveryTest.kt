@@ -2,8 +2,16 @@ package com.robotdelivery.domain.delivery
 
 import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.common.RobotId
-import com.robotdelivery.domain.delivery.event.*
-import org.junit.jupiter.api.Assertions.*
+import com.robotdelivery.domain.delivery.event.DeliveryCompletedEvent
+import com.robotdelivery.domain.delivery.event.DeliveryCreatedEvent
+import com.robotdelivery.domain.delivery.event.DeliveryRobotAssignedEvent
+import com.robotdelivery.domain.delivery.event.DeliveryRobotReassignedEvent
+import com.robotdelivery.domain.delivery.event.DeliveryRobotUnassignedEvent
+import com.robotdelivery.domain.delivery.event.DeliveryStartedEvent
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -495,11 +503,11 @@ class DeliveryTest {
     @DisplayName("현재 목적지 테스트")
     inner class GetCurrentDestinationTest {
         @Test
-        @DisplayName("PENDING 상태에서는 목적지가 없다")
-        fun `PENDING 상태에서는 목적지가 없다`() {
+        @DisplayName("PENDING 상태에서는 픽업 목적지가 현재 목적지다")
+        fun `PENDING 상태에서는 픽업 목적지가 현재 목적지다`() {
             val delivery = createDelivery()
 
-            assertNull(delivery.getCurrentDestination())
+            assertEquals(pickupDestination, delivery.getCurrentDestination())
         }
 
         @Test
@@ -548,32 +556,30 @@ class DeliveryTest {
             val newRobotId = RobotId(2L)
             delivery.assignRobot(oldRobotId)
 
-            val destination = delivery.reassignRobot(newRobotId)
+            delivery.reassignRobot(newRobotId)
 
-            assertEquals(DeliveryStatus.ASSIGNED, delivery.status) // 상태 변함 없음
+            assertEquals(DeliveryStatus.ASSIGNED, delivery.status)
             assertEquals(newRobotId, delivery.assignedRobotId)
-            assertEquals(delivery.pickupDestination.location, destination) // 기존 로봇 목적지(픽업지)로
         }
 
         @Test
-        @DisplayName("PICKUP_ARRIVED 상태에서 배차 변경하면 픽업지로 간다")
-        fun `PICKUP_ARRIVED 상태에서 배차 변경하면 픽업지로 간다`() {
+        @DisplayName("PICKUP_ARRIVED 상태에서 배차 변경할 수 있다")
+        fun `PICKUP_ARRIVED 상태에서 배차 변경할 수 있다`() {
             val delivery = createDelivery()
             val oldRobotId = RobotId(1L)
             val newRobotId = RobotId(2L)
             delivery.assignRobot(oldRobotId)
             delivery.arrived()
 
-            val destination = delivery.reassignRobot(newRobotId)
+            delivery.reassignRobot(newRobotId)
 
             assertEquals(DeliveryStatus.PICKUP_ARRIVED, delivery.status)
             assertEquals(newRobotId, delivery.assignedRobotId)
-            assertEquals(delivery.pickupDestination.location, destination)
         }
 
         @Test
-        @DisplayName("PICKING_UP 상태에서 배차 변경하면 픽업지로 간다")
-        fun `PICKING_UP 상태에서 배차 변경하면 픽업지로 간다`() {
+        @DisplayName("PICKING_UP 상태에서 배차 변경할 수 있다")
+        fun `PICKING_UP 상태에서 배차 변경할 수 있다`() {
             val delivery = createDelivery()
             val oldRobotId = RobotId(1L)
             val newRobotId = RobotId(2L)
@@ -581,16 +587,15 @@ class DeliveryTest {
             delivery.arrived()
             delivery.openDoor()
 
-            val destination = delivery.reassignRobot(newRobotId)
+            delivery.reassignRobot(newRobotId)
 
             assertEquals(DeliveryStatus.PICKING_UP, delivery.status)
             assertEquals(newRobotId, delivery.assignedRobotId)
-            assertEquals(delivery.pickupDestination.location, destination)
         }
 
         @Test
-        @DisplayName("DELIVERING 상태에서 배차 변경하면 배달지로 간다")
-        fun `DELIVERING 상태에서 배차 변경하면 배달지로 간다`() {
+        @DisplayName("DELIVERING 상태에서 배차 변경할 수 있다")
+        fun `DELIVERING 상태에서 배차 변경할 수 있다`() {
             val delivery = createDelivery()
             val oldRobotId = RobotId(1L)
             val newRobotId = RobotId(2L)
@@ -599,16 +604,15 @@ class DeliveryTest {
             delivery.openDoor()
             delivery.startDelivery()
 
-            val destination = delivery.reassignRobot(newRobotId)
+            delivery.reassignRobot(newRobotId)
 
             assertEquals(DeliveryStatus.DELIVERING, delivery.status)
             assertEquals(newRobotId, delivery.assignedRobotId)
-            assertEquals(delivery.deliveryDestination.location, destination) // 기존 로봇 목적지(배달지)로
         }
 
         @Test
-        @DisplayName("DELIVERY_ARRIVED 상태에서 배차 변경하면 배달지로 간다")
-        fun `DELIVERY_ARRIVED 상태에서 배차 변경하면 배달지로 간다`() {
+        @DisplayName("DELIVERY_ARRIVED 상태에서 배차 변경할 수 있다")
+        fun `DELIVERY_ARRIVED 상태에서 배차 변경할 수 있다`() {
             val delivery = createDelivery()
             val oldRobotId = RobotId(1L)
             val newRobotId = RobotId(2L)
@@ -618,16 +622,15 @@ class DeliveryTest {
             delivery.startDelivery()
             delivery.arrived()
 
-            val destination = delivery.reassignRobot(newRobotId)
+            delivery.reassignRobot(newRobotId)
 
             assertEquals(DeliveryStatus.DELIVERY_ARRIVED, delivery.status)
             assertEquals(newRobotId, delivery.assignedRobotId)
-            assertEquals(delivery.deliveryDestination.location, destination)
         }
 
         @Test
-        @DisplayName("DROPPING_OFF 상태에서 배차 변경하면 배달지로 간다")
-        fun `DROPPING_OFF 상태에서 배차 변경하면 배달지로 간다`() {
+        @DisplayName("DROPPING_OFF 상태에서 배차 변경할 수 있다")
+        fun `DROPPING_OFF 상태에서 배차 변경할 수 있다`() {
             val delivery = createDelivery()
             val oldRobotId = RobotId(1L)
             val newRobotId = RobotId(2L)
@@ -638,11 +641,10 @@ class DeliveryTest {
             delivery.arrived()
             delivery.openDoor()
 
-            val destination = delivery.reassignRobot(newRobotId)
+            delivery.reassignRobot(newRobotId)
 
             assertEquals(DeliveryStatus.DROPPING_OFF, delivery.status)
             assertEquals(newRobotId, delivery.assignedRobotId)
-            assertEquals(delivery.deliveryDestination.location, destination)
         }
 
         @Test
@@ -661,7 +663,6 @@ class DeliveryTest {
             val event = events[0] as DeliveryRobotReassignedEvent
             assertEquals(oldRobotId, event.previousRobotId)
             assertEquals(newRobotId, event.newRobotId)
-            assertEquals(delivery.pickupDestination.location, event.newRobotDestination)
         }
 
         @Test

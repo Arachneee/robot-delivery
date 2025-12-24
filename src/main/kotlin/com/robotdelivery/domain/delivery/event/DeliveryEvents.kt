@@ -61,5 +61,4 @@ class DeliveryRobotReassignedEvent(
     deliveryId: DeliveryId,
     val previousRobotId: RobotId,
     val newRobotId: RobotId,
-    val newRobotDestination: Location,
 ) : DeliveryEvent(deliveryId = deliveryId, robotId = newRobotId)

@@ -2,8 +2,13 @@ package com.robotdelivery.domain.robot
 
 import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.common.Location
-import com.robotdelivery.domain.robot.event.*
-import org.junit.jupiter.api.Assertions.*
+import com.robotdelivery.domain.robot.event.RobotArrivedAtDestinationEvent
+import com.robotdelivery.domain.robot.event.RobotBecameAvailableEvent
+import com.robotdelivery.domain.robot.event.RobotDestinationChangedEvent
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested

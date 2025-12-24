@@ -4,10 +4,29 @@ package com.robotdelivery.domain.delivery
 
 import com.robotdelivery.domain.common.BaseEntity
 import com.robotdelivery.domain.common.DeliveryId
-import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.common.RobotId
-import com.robotdelivery.domain.delivery.event.*
-import jakarta.persistence.*
+import com.robotdelivery.domain.delivery.event.DeliveryCanceledEvent
+import com.robotdelivery.domain.delivery.event.DeliveryCompletedEvent
+import com.robotdelivery.domain.delivery.event.DeliveryCreatedEvent
+import com.robotdelivery.domain.delivery.event.DeliveryReturnCompletedEvent
+import com.robotdelivery.domain.delivery.event.DeliveryReturnStartedEvent
+import com.robotdelivery.domain.delivery.event.DeliveryRobotAssignedEvent
+import com.robotdelivery.domain.delivery.event.DeliveryRobotReassignedEvent
+import com.robotdelivery.domain.delivery.event.DeliveryRobotUnassignedEvent
+import com.robotdelivery.domain.delivery.event.DeliveryStartedEvent
+import jakarta.persistence.AttributeOverride
+import jakarta.persistence.AttributeOverrides
+import jakarta.persistence.Column
+import jakarta.persistence.Embedded
+import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
+import jakarta.persistence.GeneratedValue
+import jakarta.persistence.GenerationType
+import jakarta.persistence.Id
+import jakarta.persistence.PostPersist
+import jakarta.persistence.Table
+import jakarta.persistence.Transient
 
 @Entity
 @Table(name = "deliveries")
@@ -93,7 +112,7 @@ class Delivery(
         )
     }
 
-    fun reassignRobot(newRobotId: RobotId): Location {
+    fun reassignRobot(newRobotId: RobotId) {
         check(status.isReassignable()) {
             "배차 변경이 불가능한 상태입니다. 현재 상태: $status"
         }
@@ -105,8 +124,6 @@ class Delivery(
             "동일한 로봇으로는 배차 변경할 수 없습니다."
         }
 
-        val newRobotDestination = getCurrentDestination()!!.location
-
         this.assignedRobotId = newRobotId
 
         registerEvent(
@@ -114,11 +131,8 @@ class Delivery(
                 deliveryId = getDeliveryId(),
                 previousRobotId = previousRobotId,
                 newRobotId = newRobotId,
-                newRobotDestination = newRobotDestination,
             ),
         )
-
-        return newRobotDestination
     }
 
     fun arrived() {
@@ -223,13 +237,13 @@ class Delivery(
 
     fun isActive(): Boolean = !status.isTerminal()
 
-    fun getCurrentDestination(): Destination? =
+    fun getCurrentDestination(): Destination =
         when (status) {
-            DeliveryStatus.PENDING -> null
+            DeliveryStatus.PENDING -> pickupDestination
             DeliveryStatus.ASSIGNED, DeliveryStatus.PICKUP_ARRIVED, DeliveryStatus.PICKING_UP -> pickupDestination
             DeliveryStatus.DELIVERING, DeliveryStatus.DELIVERY_ARRIVED, DeliveryStatus.DROPPING_OFF -> deliveryDestination
             DeliveryStatus.RETURNING, DeliveryStatus.RETURN_ARRIVED, DeliveryStatus.RETURNING_OFF -> pickupDestination
-            DeliveryStatus.COMPLETED, DeliveryStatus.CANCELED, DeliveryStatus.RETURN_COMPLETED -> null
+            DeliveryStatus.COMPLETED, DeliveryStatus.CANCELED, DeliveryStatus.RETURN_COMPLETED -> pickupDestination
         }
 
     fun getAssignedRobotIdOrThrow(): RobotId = assignedRobotId ?: throw IllegalStateException("배차된 로봇이 없습니다.")

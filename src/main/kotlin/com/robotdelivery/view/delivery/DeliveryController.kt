@@ -3,9 +3,22 @@ package com.robotdelivery.view.delivery
 import com.robotdelivery.application.DeliveryService
 import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.common.RobotId
-import com.robotdelivery.view.delivery.dto.*
+import com.robotdelivery.view.delivery.dto.CancelDeliveryResponse
+import com.robotdelivery.view.delivery.dto.CompleteDeliveryResponse
+import com.robotdelivery.view.delivery.dto.CompleteReturnResponse
+import com.robotdelivery.view.delivery.dto.CreateDeliveryRequest
+import com.robotdelivery.view.delivery.dto.CreateDeliveryResponse
+import com.robotdelivery.view.delivery.dto.OpenDoorResponse
+import com.robotdelivery.view.delivery.dto.ReassignRobotRequest
+import com.robotdelivery.view.delivery.dto.ReassignRobotResponse
+import com.robotdelivery.view.delivery.dto.StartDeliveryResponse
+import com.robotdelivery.view.delivery.dto.UnassignRobotResponse
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
 import java.net.URI
 
 @RestController
@@ -86,9 +99,9 @@ class DeliveryController(
             )
 
         return ResponseEntity.ok(
-            ReassignRobotResponse(
+            ReassignRobotResponse.of(
                 deliveryId = deliveryId,
-                previousRobotId = previousRobotId.value,
+                previousRobotId = previousRobotId?.value,
                 newRobotId = request.newRobotId,
             ),
         )

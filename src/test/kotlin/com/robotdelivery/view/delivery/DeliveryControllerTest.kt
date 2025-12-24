@@ -19,14 +19,20 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.http.MediaType
 import org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document
 import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post
-import org.springframework.restdocs.operation.preprocess.Preprocessors.*
+import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest
+import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse
+import org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint
 import org.springframework.restdocs.payload.JsonFieldType
-import org.springframework.restdocs.payload.PayloadDocumentation.*
+import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
+import org.springframework.restdocs.payload.PayloadDocumentation.requestFields
+import org.springframework.restdocs.payload.PayloadDocumentation.responseFields
 import org.springframework.restdocs.request.RequestDocumentation.parameterWithName
 import org.springframework.restdocs.request.RequestDocumentation.pathParameters
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 @WebMvcTest(DeliveryController::class)
 @AutoConfigureRestDocs
@@ -404,7 +410,8 @@ class DeliveryControllerTest {
                             .description("배차 변경된 배달 ID"),
                         fieldWithPath("previousRobotId")
                             .type(JsonFieldType.NUMBER)
-                            .description("이전 로봇 ID"),
+                            .description("이전 로봇 ID (신규 배차인 경우 null)")
+                            .optional(),
                         fieldWithPath("newRobotId")
                             .type(JsonFieldType.NUMBER)
                             .description("새 로봇 ID"),
@@ -414,5 +421,29 @@ class DeliveryControllerTest {
                     ),
                 ),
             )
+    }
+
+    @Test
+    @DisplayName("배차 API - 로봇이 없는 상태에서 신규 배차 성공")
+    fun `배차 API 신규 배차 성공`() {
+        // given
+        val deliveryId = 1L
+        val newRobotId = 2L
+        val request = ReassignRobotRequest(newRobotId = newRobotId)
+
+        whenever(deliveryService.reassignRobot(DeliveryId(deliveryId), RobotId(newRobotId)))
+            .thenReturn(null)
+
+        // when & then
+        mockMvc
+            .perform(
+                post("/api/deliveries/{deliveryId}/reassign-robot", deliveryId)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request)),
+            ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.deliveryId").value(deliveryId))
+            .andExpect(jsonPath("$.previousRobotId").isEmpty)
+            .andExpect(jsonPath("$.newRobotId").value(newRobotId))
+            .andExpect(jsonPath("$.message").value("로봇이 배차되었습니다."))
     }
 }
