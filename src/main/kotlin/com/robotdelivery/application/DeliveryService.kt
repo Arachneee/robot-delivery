@@ -1,12 +1,10 @@
 package com.robotdelivery.application
 
 import com.robotdelivery.application.client.RobotClient
+import com.robotdelivery.application.command.CreateDeliveryCommand
 import com.robotdelivery.domain.common.DeliveryId
-import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.common.RobotId
-import com.robotdelivery.domain.delivery.Delivery
 import com.robotdelivery.domain.delivery.DeliveryRepository
-import com.robotdelivery.domain.delivery.Destination
 import com.robotdelivery.domain.delivery.getById
 import com.robotdelivery.domain.robot.RobotRepository
 import com.robotdelivery.domain.robot.getById
@@ -20,47 +18,15 @@ class DeliveryService(
     private val robotRepository: RobotRepository,
     private val robotClient: RobotClient,
 ) {
-    fun createDelivery(
-        pickupAddress: String,
-        pickupAddressDetail: String?,
-        pickupLatitude: Double,
-        pickupLongitude: Double,
-        deliveryAddress: String,
-        deliveryAddressDetail: String?,
-        deliveryLatitude: Double,
-        deliveryLongitude: Double,
-        phoneNumber: String,
-    ): DeliveryId {
-        val delivery =
-            Delivery(
-                pickupDestination =
-                    Destination(
-                        address = pickupAddress,
-                        addressDetail = pickupAddressDetail,
-                        location = Location(pickupLatitude, pickupLongitude),
-                    ),
-                deliveryDestination =
-                    Destination(
-                        address = deliveryAddress,
-                        addressDetail = deliveryAddressDetail,
-                        location = Location(deliveryLatitude, deliveryLongitude),
-                    ),
-                phoneNumber = phoneNumber,
-            )
-
+    fun createDelivery(command: CreateDeliveryCommand): DeliveryId {
+        val delivery = command.toDelivery()
         val savedDelivery = deliveryRepository.saveAndFlush(delivery)
-
         return savedDelivery.getDeliveryId()
     }
 
     fun completeDelivery(deliveryId: DeliveryId) {
         val delivery = deliveryRepository.getById(deliveryId)
-
-        val robotId =
-            delivery.assignedRobotId
-                ?: throw IllegalStateException("배차된 로봇이 없습니다.")
-
-        val robot = robotRepository.getById(robotId)
+        val robot = robotRepository.getById(delivery.getAssignedRobotIdOrThrow())
 
         delivery.complete()
         robot.completeDelivery()
@@ -71,10 +37,7 @@ class DeliveryService(
 
     fun openDoor(deliveryId: DeliveryId) {
         val delivery = deliveryRepository.getById(deliveryId)
-
-        val robotId =
-            delivery.assignedRobotId
-                ?: throw IllegalStateException("배차된 로봇이 없습니다.")
+        val robotId = delivery.getAssignedRobotIdOrThrow()
 
         delivery.openDoor()
         deliveryRepository.save(delivery)
@@ -84,12 +47,7 @@ class DeliveryService(
 
     fun startDelivery(deliveryId: DeliveryId) {
         val delivery = deliveryRepository.getById(deliveryId)
-
-        val robotId =
-            delivery.assignedRobotId
-                ?: throw IllegalStateException("배차된 로봇이 없습니다.")
-
-        val robot = robotRepository.getById(robotId)
+        val robot = robotRepository.getById(delivery.getAssignedRobotIdOrThrow())
 
         delivery.startDelivery()
         robot.navigateTo(delivery.deliveryDestination.location)
@@ -100,12 +58,7 @@ class DeliveryService(
 
     fun completeReturn(deliveryId: DeliveryId) {
         val delivery = deliveryRepository.getById(deliveryId)
-
-        val robotId =
-            delivery.assignedRobotId
-                ?: throw IllegalStateException("배차된 로봇이 없습니다.")
-
-        val robot = robotRepository.getById(robotId)
+        val robot = robotRepository.getById(delivery.getAssignedRobotIdOrThrow())
 
         delivery.completeReturn()
         robot.completeDelivery()
@@ -140,12 +93,7 @@ class DeliveryService(
 
     fun unassignRobot(deliveryId: DeliveryId) {
         val delivery = deliveryRepository.getById(deliveryId)
-
-        val robotId =
-            delivery.assignedRobotId
-                ?: throw IllegalStateException("배차된 로봇이 없습니다.")
-
-        val robot = robotRepository.getById(robotId)
+        val robot = robotRepository.getById(delivery.getAssignedRobotIdOrThrow())
 
         delivery.unassignRobot()
         robot.unassignDelivery()
@@ -159,10 +107,7 @@ class DeliveryService(
         newRobotId: RobotId,
     ): RobotId {
         val delivery = deliveryRepository.getById(deliveryId)
-
-        val previousRobotId =
-            delivery.assignedRobotId
-                ?: throw IllegalStateException("배차된 로봇이 없습니다.")
+        val previousRobotId = delivery.getAssignedRobotIdOrThrow()
 
         val previousRobot = robotRepository.getById(previousRobotId)
         val newRobot = robotRepository.getById(newRobotId)
