@@ -7,15 +7,11 @@ import com.robotdelivery.domain.robot.event.RobotArrivedEvent
 import com.robotdelivery.domain.robot.event.RobotBecameAvailableEvent
 import com.robotdelivery.domain.robot.event.RobotDestinationChangedEvent
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 
 @DisplayName("Robot 테스트")
 class RobotTest {
@@ -55,9 +51,9 @@ class RobotTest {
         fun `로봇을 생성하면 OFF_DUTY 상태이다`() {
             val robot = createRobot()
 
-            assertEquals(RobotStatus.OFF_DUTY, robot.status)
-            assertEquals(100, robot.battery)
-            assertNull(robot.currentDeliveryId)
+            assertThat(robot.status).isEqualTo(RobotStatus.OFF_DUTY)
+            assertThat(robot.battery).isEqualTo(100)
+            assertThat(robot.currentDeliveryId).isNull()
         }
 
         @Test
@@ -65,7 +61,7 @@ class RobotTest {
         fun `로봇 ID를 조회할 수 있다`() {
             val robot = createRobot(id = 5L)
 
-            assertEquals(5L, robot.getRobotId().value)
+            assertThat(robot.getRobotId().value).isEqualTo(5L)
         }
     }
 
@@ -79,7 +75,7 @@ class RobotTest {
 
             robot.startDuty()
 
-            assertEquals(RobotStatus.READY, robot.status)
+            assertThat(robot.status).isEqualTo(RobotStatus.READY)
         }
 
         @Test
@@ -90,8 +86,8 @@ class RobotTest {
             robot.startDuty()
             val events = robot.pullDomainEvents()
 
-            assertEquals(1, events.size)
-            assertTrue(events[0] is RobotBecameAvailableEvent)
+            assertThat(events).hasSize(1)
+            assertThat(events[0]).isInstanceOf(RobotBecameAvailableEvent::class.java)
         }
     }
 
@@ -105,7 +101,7 @@ class RobotTest {
 
             robot.endDuty()
 
-            assertEquals(RobotStatus.OFF_DUTY, robot.status)
+            assertThat(robot.status).isEqualTo(RobotStatus.OFF_DUTY)
         }
 
         @Test
@@ -116,7 +112,7 @@ class RobotTest {
             robot.endDuty()
             val events = robot.pullDomainEvents()
 
-            assertTrue(events.isEmpty())
+            assertThat(events).isEmpty()
         }
 
         @Test
@@ -124,14 +120,9 @@ class RobotTest {
         fun `배달 수행 중에는 퇴근할 수 없다`() {
             val robot = createRobot(status = RobotStatus.BUSY, currentDeliveryId = DeliveryId(1L))
 
-            val exception =
-                assertThrows<IllegalStateException> {
-                    robot.endDuty()
-                }
-            assertTrue(
-                exception.message!!.contains("퇴근할 수 없는 상태입니다") ||
-                    exception.message!!.contains("배달 수행 중에는 퇴근할 수 없습니다"),
-            )
+            assertThatThrownBy { robot.endDuty() }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageMatching(".*(퇴근할 수 없는 상태입니다|배달 수행 중에는 퇴근할 수 없습니다).*")
         }
 
         @Test
@@ -139,11 +130,9 @@ class RobotTest {
         fun `OFF_DUTY 상태에서 퇴근하면 예외가 발생한다`() {
             val robot = createRobot()
 
-            val exception =
-                assertThrows<IllegalStateException> {
-                    robot.endDuty()
-                }
-            assertTrue(exception.message!!.contains("퇴근할 수 없는 상태입니다"))
+            assertThatThrownBy { robot.endDuty() }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("퇴근할 수 없는 상태입니다")
         }
     }
 
@@ -159,8 +148,8 @@ class RobotTest {
 
             robot.assignDelivery(deliveryId, pickupLocation)
 
-            assertEquals(RobotStatus.BUSY, robot.status)
-            assertEquals(deliveryId, robot.currentDeliveryId)
+            assertThat(robot.status).isEqualTo(RobotStatus.BUSY)
+            assertThat(robot.currentDeliveryId).isEqualTo(deliveryId)
         }
 
         @Test
@@ -173,9 +162,9 @@ class RobotTest {
             robot.assignDelivery(deliveryId, pickupLocation)
             val events = robot.pullDomainEvents()
 
-            assertEquals(1, events.size)
+            assertThat(events).hasSize(1)
             val destinationChangedEvent = events[0] as RobotDestinationChangedEvent
-            assertEquals(pickupLocation, destinationChangedEvent.destination)
+            assertThat(destinationChangedEvent.destination).isEqualTo(pickupLocation)
         }
 
         @Test
@@ -184,11 +173,9 @@ class RobotTest {
             val robot = createRobot()
             val pickupLocation = Location(latitude = 37.5665, longitude = 126.9780)
 
-            val exception =
-                assertThrows<IllegalStateException> {
-                    robot.assignDelivery(DeliveryId(1L), pickupLocation)
-                }
-            assertTrue(exception.message!!.contains("배달을 받을 수 없는 상태입니다"))
+            assertThatThrownBy { robot.assignDelivery(DeliveryId(1L), pickupLocation) }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("배달을 받을 수 없는 상태입니다")
         }
 
         @Test
@@ -197,14 +184,9 @@ class RobotTest {
             val robot = createRobot(status = RobotStatus.BUSY, currentDeliveryId = DeliveryId(1L))
             val pickupLocation = Location(latitude = 37.5665, longitude = 126.9780)
 
-            val exception =
-                assertThrows<IllegalStateException> {
-                    robot.assignDelivery(DeliveryId(2L), pickupLocation)
-                }
-            assertTrue(
-                exception.message!!.contains("배달을 받을 수 없는 상태입니다") ||
-                    exception.message!!.contains("이미 다른 배달을 수행 중입니다"),
-            )
+            assertThatThrownBy { robot.assignDelivery(DeliveryId(2L), pickupLocation) }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageMatching(".*(배달을 받을 수 없는 상태입니다|이미 다른 배달을 수행 중입니다).*")
         }
     }
 
@@ -218,8 +200,8 @@ class RobotTest {
 
             robot.completeDelivery()
 
-            assertEquals(RobotStatus.READY, robot.status)
-            assertNull(robot.currentDeliveryId)
+            assertThat(robot.status).isEqualTo(RobotStatus.READY)
+            assertThat(robot.currentDeliveryId).isNull()
         }
 
         @Test
@@ -230,8 +212,8 @@ class RobotTest {
             robot.completeDelivery()
             val events = robot.pullDomainEvents()
 
-            assertEquals(1, events.size)
-            assertTrue(events[0] is RobotBecameAvailableEvent)
+            assertThat(events).hasSize(1)
+            assertThat(events[0]).isInstanceOf(RobotBecameAvailableEvent::class.java)
         }
 
         @Test
@@ -239,11 +221,9 @@ class RobotTest {
         fun `READY 상태에서 배달 완료하면 예외가 발생한다`() {
             val robot = createRobot(status = RobotStatus.READY)
 
-            val exception =
-                assertThrows<IllegalStateException> {
-                    robot.completeDelivery()
-                }
-            assertTrue(exception.message!!.contains("배달 수행 중이 아닙니다"))
+            assertThatThrownBy { robot.completeDelivery() }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("배달 수행 중이 아닙니다")
         }
     }
 
@@ -257,8 +237,8 @@ class RobotTest {
 
             robot.unassignDelivery()
 
-            assertEquals(RobotStatus.READY, robot.status)
-            assertNull(robot.currentDeliveryId)
+            assertThat(robot.status).isEqualTo(RobotStatus.READY)
+            assertThat(robot.currentDeliveryId).isNull()
         }
 
         @Test
@@ -270,7 +250,7 @@ class RobotTest {
 
             robot.unassignDelivery()
 
-            assertNull(robot.destination)
+            assertThat(robot.destination).isNull()
         }
 
         @Test
@@ -281,8 +261,8 @@ class RobotTest {
             robot.unassignDelivery()
             val events = robot.pullDomainEvents()
 
-            assertEquals(1, events.size)
-            assertTrue(events[0] is RobotBecameAvailableEvent)
+            assertThat(events).hasSize(1)
+            assertThat(events[0]).isInstanceOf(RobotBecameAvailableEvent::class.java)
         }
 
         @Test
@@ -290,11 +270,9 @@ class RobotTest {
         fun `READY 상태에서 배차 취소하면 예외가 발생한다`() {
             val robot = createRobot(status = RobotStatus.READY)
 
-            val exception =
-                assertThrows<IllegalStateException> {
-                    robot.unassignDelivery()
-                }
-            assertTrue(exception.message!!.contains("배달 수행 중이 아닙니다"))
+            assertThatThrownBy { robot.unassignDelivery() }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("배달 수행 중이 아닙니다")
         }
 
         @Test
@@ -302,11 +280,9 @@ class RobotTest {
         fun `할당된 배달이 없으면 예외가 발생한다`() {
             val robot = createRobot(status = RobotStatus.BUSY, currentDeliveryId = null)
 
-            val exception =
-                assertThrows<IllegalStateException> {
-                    robot.unassignDelivery()
-                }
-            assertTrue(exception.message!!.contains("할당된 배달이 없습니다"))
+            assertThatThrownBy { robot.unassignDelivery() }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("할당된 배달이 없습니다")
         }
     }
 
@@ -320,7 +296,7 @@ class RobotTest {
 
             robot.updateBattery(50)
 
-            assertEquals(50, robot.battery)
+            assertThat(robot.battery).isEqualTo(50)
         }
 
         @Test
@@ -329,10 +305,10 @@ class RobotTest {
             val robot = createRobot()
 
             robot.updateBattery(0)
-            assertEquals(0, robot.battery)
+            assertThat(robot.battery).isEqualTo(0)
 
             robot.updateBattery(100)
-            assertEquals(100, robot.battery)
+            assertThat(robot.battery).isEqualTo(100)
         }
 
         @Test
@@ -340,11 +316,9 @@ class RobotTest {
         fun `배터리가 0 미만이면 예외가 발생한다`() {
             val robot = createRobot()
 
-            val exception =
-                assertThrows<IllegalArgumentException> {
-                    robot.updateBattery(-1)
-                }
-            assertTrue(exception.message!!.contains("배터리는 0에서 100 사이여야 합니다"))
+            assertThatThrownBy { robot.updateBattery(-1) }
+                .isInstanceOf(IllegalArgumentException::class.java)
+                .hasMessageContaining("배터리는 0에서 100 사이여야 합니다")
         }
 
         @Test
@@ -352,11 +326,9 @@ class RobotTest {
         fun `배터리가 100 초과이면 예외가 발생한다`() {
             val robot = createRobot()
 
-            val exception =
-                assertThrows<IllegalArgumentException> {
-                    robot.updateBattery(101)
-                }
-            assertTrue(exception.message!!.contains("배터리는 0에서 100 사이여야 합니다"))
+            assertThatThrownBy { robot.updateBattery(101) }
+                .isInstanceOf(IllegalArgumentException::class.java)
+                .hasMessageContaining("배터리는 0에서 100 사이여야 합니다")
         }
     }
 
@@ -492,7 +464,7 @@ class RobotTest {
         fun `READY 상태이고 배달이 없고 배터리가 20 이상이면 사용 가능하다`() {
             val robot = createRobot(status = RobotStatus.READY, battery = 50)
 
-            assertTrue(robot.isAvailable())
+            assertThat(robot.isAvailable()).isTrue()
         }
 
         @Test
@@ -500,7 +472,7 @@ class RobotTest {
         fun `배터리가 20 미만이면 사용 불가능하다`() {
             val robot = createRobot(status = RobotStatus.READY, battery = 19)
 
-            assertFalse(robot.isAvailable())
+            assertThat(robot.isAvailable()).isFalse()
         }
 
         @Test
@@ -508,7 +480,7 @@ class RobotTest {
         fun `배터리가 정확히 20이면 사용 가능하다`() {
             val robot = createRobot(status = RobotStatus.READY, battery = 20)
 
-            assertTrue(robot.isAvailable())
+            assertThat(robot.isAvailable()).isTrue()
         }
 
         @Test
@@ -516,7 +488,7 @@ class RobotTest {
         fun `BUSY 상태이면 사용 불가능하다`() {
             val robot = createRobot(status = RobotStatus.BUSY, currentDeliveryId = DeliveryId(1L))
 
-            assertFalse(robot.isAvailable())
+            assertThat(robot.isAvailable()).isFalse()
         }
 
         @Test
@@ -524,7 +496,7 @@ class RobotTest {
         fun `OFF_DUTY 상태이면 사용 불가능하다`() {
             val robot = createRobot()
 
-            assertFalse(robot.isAvailable())
+            assertThat(robot.isAvailable()).isFalse()
         }
 
         @Test
@@ -532,7 +504,7 @@ class RobotTest {
         fun `현재 배달이 할당되어 있으면 사용 불가능하다`() {
             val robot = createRobot(status = RobotStatus.READY, currentDeliveryId = DeliveryId(1L))
 
-            assertFalse(robot.isAvailable())
+            assertThat(robot.isAvailable()).isFalse()
         }
     }
 
@@ -547,7 +519,7 @@ class RobotTest {
 
             robot.navigateTo(destination)
 
-            assertEquals(destination, robot.destination)
+            assertThat(robot.destination).isEqualTo(destination)
         }
 
         @Test
@@ -559,10 +531,10 @@ class RobotTest {
             robot.navigateTo(destination)
             val events = robot.pullDomainEvents()
 
-            assertEquals(1, events.size)
+            assertThat(events).hasSize(1)
             val event = events[0] as RobotDestinationChangedEvent
-            assertEquals(robot.getRobotId(), event.robotId)
-            assertEquals(destination, event.destination)
+            assertThat(event.robotId).isEqualTo(robot.getRobotId())
+            assertThat(event.destination).isEqualTo(destination)
         }
 
         @Test
@@ -571,11 +543,9 @@ class RobotTest {
             val robot = createRobot(status = RobotStatus.READY)
             val destination = Location(latitude = 37.5000, longitude = 127.0000)
 
-            val exception =
-                assertThrows<IllegalStateException> {
-                    robot.navigateTo(destination)
-                }
-            assertTrue(exception.message!!.contains("배달 수행 중이 아닙니다"))
+            assertThatThrownBy { robot.navigateTo(destination) }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("배달 수행 중이 아닙니다")
         }
 
         @Test
@@ -584,11 +554,9 @@ class RobotTest {
             val robot = createRobot()
             val destination = Location(latitude = 37.5000, longitude = 127.0000)
 
-            val exception =
-                assertThrows<IllegalStateException> {
-                    robot.navigateTo(destination)
-                }
-            assertTrue(exception.message!!.contains("배달 수행 중이 아닙니다"))
+            assertThatThrownBy { robot.navigateTo(destination) }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("배달 수행 중이 아닙니다")
         }
     }
 }

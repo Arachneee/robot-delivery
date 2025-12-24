@@ -1,6 +1,5 @@
 package com.robotdelivery.domain.common
 
-import jakarta.persistence.Column
 import jakarta.persistence.Embeddable
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -9,9 +8,7 @@ import kotlin.math.sqrt
 
 @Embeddable
 data class Location(
-    @Column(nullable = false)
     val latitude: Double,
-    @Column(nullable = false)
     val longitude: Double,
 ) {
     init {

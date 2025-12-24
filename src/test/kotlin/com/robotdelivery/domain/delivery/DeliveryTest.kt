@@ -2,21 +2,22 @@ package com.robotdelivery.domain.delivery
 
 import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.delivery.event.DeliveryApproachingEvent
+import com.robotdelivery.domain.delivery.event.DeliveryCanceledEvent
 import com.robotdelivery.domain.delivery.event.DeliveryCompletedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryCreatedEvent
+import com.robotdelivery.domain.delivery.event.DeliveryReturnCompletedEvent
+import com.robotdelivery.domain.delivery.event.DeliveryReturnStartedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryRobotAssignedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryRobotReassignedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryRobotUnassignedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryStartedEvent
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 
 @DisplayName("Delivery 테스트")
 class DeliveryTest {
@@ -55,8 +56,8 @@ class DeliveryTest {
         fun `배달을 생성하면 PENDING 상태이다`() {
             val delivery = createDelivery()
 
-            assertEquals(DeliveryStatus.PENDING, delivery.status)
-            assertNull(delivery.assignedRobotId)
+            assertThat(delivery.status).isEqualTo(DeliveryStatus.PENDING)
+            assertThat(delivery.assignedRobotId).isNull()
         }
 
         @Test
@@ -70,12 +71,11 @@ class DeliveryTest {
                     phoneNumber = "010-1234-5678",
                 ).apply { isNew = true }
 
-            // JPA @PostPersist 콜백 시뮬레이션
             delivery.onPostPersist()
             val events = delivery.pullDomainEvents()
 
-            assertEquals(1, events.size)
-            assertTrue(events[0] is DeliveryCreatedEvent)
+            assertThat(events).hasSize(1)
+            assertThat(events[0]).isInstanceOf(DeliveryCreatedEvent::class.java)
         }
 
         @Test
@@ -90,10 +90,10 @@ class DeliveryTest {
                 ).apply { isNew = true }
 
             delivery.onPostPersist()
-            delivery.onPostPersist() // 두 번째 호출
+            delivery.onPostPersist()
             val events = delivery.pullDomainEvents()
 
-            assertEquals(1, events.size) // 여전히 1개만
+            assertThat(events).hasSize(1)
         }
 
         @Test
@@ -103,7 +103,7 @@ class DeliveryTest {
 
             val events = delivery.pullDomainEvents()
 
-            assertTrue(events.isEmpty())
+            assertThat(events).isEmpty()
         }
     }
 
@@ -118,8 +118,8 @@ class DeliveryTest {
 
             delivery.assignRobot(robotId)
 
-            assertEquals(DeliveryStatus.ASSIGNED, delivery.status)
-            assertEquals(robotId, delivery.assignedRobotId)
+            assertThat(delivery.status).isEqualTo(DeliveryStatus.ASSIGNED)
+            assertThat(delivery.assignedRobotId).isEqualTo(robotId)
         }
 
         @Test
@@ -131,9 +131,9 @@ class DeliveryTest {
             delivery.assignRobot(robotId)
             val events = delivery.pullDomainEvents()
 
-            assertEquals(1, events.size)
+            assertThat(events).hasSize(1)
             val event = events[0] as DeliveryRobotAssignedEvent
-            assertEquals(robotId, event.robotId)
+            assertThat(event.robotId).isEqualTo(robotId)
         }
 
         @Test
@@ -142,11 +142,9 @@ class DeliveryTest {
             val delivery = createDelivery()
             delivery.assignRobot(RobotId(1L))
 
-            val exception =
-                assertThrows<IllegalStateException> {
-                    delivery.assignRobot(RobotId(2L))
-                }
-            assertTrue(exception.message!!.contains("대기 상태의 배달만 로봇 배차가 가능합니다"))
+            assertThatThrownBy { delivery.assignRobot(RobotId(2L)) }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("대기 상태의 배달만 로봇 배차가 가능합니다")
         }
     }
 
@@ -161,7 +159,7 @@ class DeliveryTest {
 
             delivery.arrived()
 
-            assertEquals(DeliveryStatus.PICKUP_ARRIVED, delivery.status)
+            assertThat(delivery.status).isEqualTo(DeliveryStatus.PICKUP_ARRIVED)
         }
 
         @Test
@@ -169,13 +167,13 @@ class DeliveryTest {
         fun `DELIVERING 상태에서 도착하면 DELIVERY_ARRIVED가 된다`() {
             val delivery = createDelivery()
             delivery.assignRobot(RobotId(1L))
-            delivery.arrived() // PICKUP_ARRIVED
-            delivery.openDoor() // PICKING_UP
-            delivery.startDelivery() // DELIVERING
+            delivery.arrived()
+            delivery.openDoor()
+            delivery.startDelivery()
 
             delivery.arrived()
 
-            assertEquals(DeliveryStatus.DELIVERY_ARRIVED, delivery.status)
+            assertThat(delivery.status).isEqualTo(DeliveryStatus.DELIVERY_ARRIVED)
         }
 
         @Test
@@ -183,11 +181,9 @@ class DeliveryTest {
         fun `PENDING 상태에서 도착 처리하면 예외가 발생한다`() {
             val delivery = createDelivery()
 
-            val exception =
-                assertThrows<IllegalStateException> {
-                    delivery.arrived()
-                }
-            assertTrue(exception.message!!.contains("도착 처리할 수 없는 상태입니다"))
+            assertThatThrownBy { delivery.arrived() }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("도착 처리할 수 없는 상태입니다")
         }
     }
 
@@ -203,7 +199,7 @@ class DeliveryTest {
 
             delivery.openDoor()
 
-            assertEquals(DeliveryStatus.PICKING_UP, delivery.status)
+            assertThat(delivery.status).isEqualTo(DeliveryStatus.PICKING_UP)
         }
 
         @Test
@@ -218,7 +214,7 @@ class DeliveryTest {
 
             delivery.openDoor()
 
-            assertEquals(DeliveryStatus.DROPPING_OFF, delivery.status)
+            assertThat(delivery.status).isEqualTo(DeliveryStatus.DROPPING_OFF)
         }
 
         @Test
@@ -226,11 +222,9 @@ class DeliveryTest {
         fun `PENDING 상태에서 문을 열면 예외가 발생한다`() {
             val delivery = createDelivery()
 
-            val exception =
-                assertThrows<IllegalStateException> {
-                    delivery.openDoor()
-                }
-            assertTrue(exception.message!!.contains("문을 열 수 없는 상태입니다"))
+            assertThatThrownBy { delivery.openDoor() }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("문을 열 수 없는 상태입니다")
         }
     }
 
@@ -247,7 +241,7 @@ class DeliveryTest {
 
             delivery.startDelivery()
 
-            assertEquals(DeliveryStatus.DELIVERING, delivery.status)
+            assertThat(delivery.status).isEqualTo(DeliveryStatus.DELIVERING)
         }
 
         @Test
@@ -257,13 +251,13 @@ class DeliveryTest {
             delivery.assignRobot(RobotId(1L))
             delivery.arrived()
             delivery.openDoor()
-            delivery.pullDomainEvents() // 이전 이벤트 클리어
+            delivery.pullDomainEvents()
 
             delivery.startDelivery()
             val events = delivery.pullDomainEvents()
 
-            assertEquals(1, events.size)
-            assertTrue(events[0] is DeliveryStartedEvent)
+            assertThat(events).hasSize(1)
+            assertThat(events[0]).isInstanceOf(DeliveryStartedEvent::class.java)
         }
 
         @Test
@@ -272,11 +266,9 @@ class DeliveryTest {
             val delivery = createDelivery()
             delivery.assignRobot(RobotId(1L))
 
-            val exception =
-                assertThrows<IllegalStateException> {
-                    delivery.startDelivery()
-                }
-            assertTrue(exception.message!!.contains("픽업 중 상태에서만 배송을 시작할 수 있습니다"))
+            assertThatThrownBy { delivery.startDelivery() }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("픽업 중 상태에서만 배송을 시작할 수 있습니다")
         }
     }
 
@@ -301,7 +293,7 @@ class DeliveryTest {
 
             delivery.complete()
 
-            assertEquals(DeliveryStatus.COMPLETED, delivery.status)
+            assertThat(delivery.status).isEqualTo(DeliveryStatus.COMPLETED)
         }
 
         @Test
@@ -313,8 +305,8 @@ class DeliveryTest {
             delivery.complete()
             val events = delivery.pullDomainEvents()
 
-            assertEquals(1, events.size)
-            assertTrue(events[0] is DeliveryCompletedEvent)
+            assertThat(events).hasSize(1)
+            assertThat(events[0]).isInstanceOf(DeliveryCompletedEvent::class.java)
         }
 
         @Test
@@ -326,11 +318,9 @@ class DeliveryTest {
             delivery.openDoor()
             delivery.startDelivery()
 
-            val exception =
-                assertThrows<IllegalStateException> {
-                    delivery.complete()
-                }
-            assertTrue(exception.message!!.contains("배달 완료 처리할 수 없는 상태입니다"))
+            assertThatThrownBy { delivery.complete() }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("배달 완료 처리할 수 없는 상태입니다")
         }
     }
 
@@ -345,8 +335,8 @@ class DeliveryTest {
 
             delivery.unassignRobot()
 
-            assertEquals(DeliveryStatus.PENDING, delivery.status)
-            assertNull(delivery.assignedRobotId)
+            assertThat(delivery.status).isEqualTo(DeliveryStatus.PENDING)
+            assertThat(delivery.assignedRobotId).isNull()
         }
 
         @Test
@@ -358,8 +348,8 @@ class DeliveryTest {
 
             delivery.unassignRobot()
 
-            assertEquals(DeliveryStatus.PENDING, delivery.status)
-            assertNull(delivery.assignedRobotId)
+            assertThat(delivery.status).isEqualTo(DeliveryStatus.PENDING)
+            assertThat(delivery.assignedRobotId).isNull()
         }
 
         @Test
@@ -372,8 +362,8 @@ class DeliveryTest {
 
             delivery.unassignRobot()
 
-            assertEquals(DeliveryStatus.PENDING, delivery.status)
-            assertNull(delivery.assignedRobotId)
+            assertThat(delivery.status).isEqualTo(DeliveryStatus.PENDING)
+            assertThat(delivery.assignedRobotId).isNull()
         }
 
         @Test
@@ -387,10 +377,10 @@ class DeliveryTest {
             delivery.unassignRobot()
             val events = delivery.pullDomainEvents()
 
-            assertEquals(1, events.size)
+            assertThat(events).hasSize(1)
             val event = events[0] as DeliveryRobotUnassignedEvent
-            assertEquals(robotId, event.robotId)
-            assertEquals(delivery.getDeliveryId(), event.deliveryId)
+            assertThat(event.robotId).isEqualTo(robotId)
+            assertThat(event.deliveryId).isEqualTo(delivery.getDeliveryId())
         }
 
         @Test
@@ -398,11 +388,9 @@ class DeliveryTest {
         fun `PENDING 상태에서 배차 취소하면 예외가 발생한다`() {
             val delivery = createDelivery()
 
-            val exception =
-                assertThrows<IllegalStateException> {
-                    delivery.unassignRobot()
-                }
-            assertTrue(exception.message!!.contains("배달 출발 전 상태에서만 배차 취소가 가능합니다."))
+            assertThatThrownBy { delivery.unassignRobot() }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("배달 출발 전 상태에서만 배차 취소가 가능합니다.")
         }
 
         @Test
@@ -414,11 +402,9 @@ class DeliveryTest {
             delivery.openDoor()
             delivery.startDelivery()
 
-            val exception =
-                assertThrows<IllegalStateException> {
-                    delivery.unassignRobot()
-                }
-            assertTrue(exception.message!!.contains("배달 출발 전 상태에서만 배차 취소가 가능합니다"))
+            assertThatThrownBy { delivery.unassignRobot() }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("배달 출발 전 상태에서만 배차 취소가 가능합니다")
         }
 
         @Test
@@ -433,11 +419,9 @@ class DeliveryTest {
             delivery.openDoor()
             delivery.complete()
 
-            val exception =
-                assertThrows<IllegalStateException> {
-                    delivery.unassignRobot()
-                }
-            assertTrue(exception.message!!.contains("배달 출발 전 상태에서만 배차 취소가 가능합니다"))
+            assertThatThrownBy { delivery.unassignRobot() }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("배달 출발 전 상태에서만 배차 취소가 가능합니다")
         }
     }
 
@@ -451,7 +435,7 @@ class DeliveryTest {
 
             delivery.cancel()
 
-            assertEquals(DeliveryStatus.CANCELED, delivery.status)
+            assertThat(delivery.status).isEqualTo(DeliveryStatus.CANCELED)
         }
 
         @Test
@@ -462,7 +446,7 @@ class DeliveryTest {
 
             delivery.cancel()
 
-            assertEquals(DeliveryStatus.CANCELED, delivery.status)
+            assertThat(delivery.status).isEqualTo(DeliveryStatus.CANCELED)
         }
 
         @Test
@@ -476,7 +460,7 @@ class DeliveryTest {
 
             delivery.cancel()
 
-            assertEquals(DeliveryStatus.RETURNING, delivery.status)
+            assertThat(delivery.status).isEqualTo(DeliveryStatus.RETURNING)
         }
 
         @Test
@@ -491,11 +475,200 @@ class DeliveryTest {
             delivery.openDoor()
             delivery.complete()
 
-            val exception =
-                assertThrows<IllegalStateException> {
-                    delivery.cancel()
-                }
-            assertTrue(exception.message!!.contains("취소할 수 없는 상태입니다"))
+            assertThatThrownBy { delivery.cancel() }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("취소할 수 없는 상태입니다")
+        }
+
+        @Test
+        @DisplayName("취소 시 DeliveryCanceledEvent가 발생한다")
+        fun `취소 시 DeliveryCanceledEvent가 발생한다`() {
+            val delivery = createDelivery()
+            delivery.pullDomainEvents()
+
+            delivery.cancel()
+            val events = delivery.pullDomainEvents()
+
+            assertThat(events).hasSize(1)
+            assertThat(events[0]).isInstanceOf(DeliveryCanceledEvent::class.java)
+            val event = events[0] as DeliveryCanceledEvent
+            assertThat(event.requiresReturn).isFalse()
+        }
+
+        @Test
+        @DisplayName("DELIVERING 상태에서 취소 시 DeliveryReturnStartedEvent와 DeliveryCanceledEvent가 발생한다")
+        fun `DELIVERING 상태에서 취소 시 DeliveryReturnStartedEvent와 DeliveryCanceledEvent가 발생한다`() {
+            val delivery = createDelivery()
+            delivery.assignRobot(RobotId(1L))
+            delivery.arrived()
+            delivery.openDoor()
+            delivery.startDelivery()
+            delivery.pullDomainEvents()
+
+            delivery.cancel()
+            val events = delivery.pullDomainEvents()
+
+            assertThat(events).hasSize(2)
+            assertThat(events[0]).isInstanceOf(DeliveryReturnStartedEvent::class.java)
+            assertThat(events[1]).isInstanceOf(DeliveryCanceledEvent::class.java)
+            val cancelEvent = events[1] as DeliveryCanceledEvent
+            assertThat(cancelEvent.requiresReturn).isTrue()
+        }
+    }
+
+    @Nested
+    @DisplayName("접근 알림 테스트")
+    inner class ApproachingTest {
+        @Test
+        @DisplayName("ASSIGNED 상태에서 접근 알림을 보낼 수 있다")
+        fun `ASSIGNED 상태에서 접근 알림을 보낼 수 있다`() {
+            val delivery = createDelivery()
+            delivery.assignRobot(RobotId(1L))
+            delivery.pullDomainEvents()
+
+            delivery.approaching()
+            val events = delivery.pullDomainEvents()
+
+            assertThat(events).hasSize(1)
+            assertThat(events[0]).isInstanceOf(DeliveryApproachingEvent::class.java)
+            val event = events[0] as DeliveryApproachingEvent
+            assertThat(event.destinationType).isEqualTo(DestinationType.PICKUP)
+        }
+
+        @Test
+        @DisplayName("DELIVERING 상태에서 접근 알림을 보낼 수 있다")
+        fun `DELIVERING 상태에서 접근 알림을 보낼 수 있다`() {
+            val delivery = createDelivery()
+            delivery.assignRobot(RobotId(1L))
+            delivery.arrived()
+            delivery.openDoor()
+            delivery.startDelivery()
+            delivery.pullDomainEvents()
+
+            delivery.approaching()
+            val events = delivery.pullDomainEvents()
+
+            assertThat(events).hasSize(1)
+            assertThat(events[0]).isInstanceOf(DeliveryApproachingEvent::class.java)
+            val event = events[0] as DeliveryApproachingEvent
+            assertThat(event.destinationType).isEqualTo(DestinationType.DELIVERY)
+        }
+
+        @Test
+        @DisplayName("RETURNING 상태에서 접근 알림을 보낼 수 있다")
+        fun `RETURNING 상태에서 접근 알림을 보낼 수 있다`() {
+            val delivery = createDelivery()
+            delivery.assignRobot(RobotId(1L))
+            delivery.arrived()
+            delivery.openDoor()
+            delivery.startDelivery()
+            delivery.cancel()
+            delivery.pullDomainEvents()
+
+            delivery.approaching()
+            val events = delivery.pullDomainEvents()
+
+            assertThat(events).hasSize(1)
+            assertThat(events[0]).isInstanceOf(DeliveryApproachingEvent::class.java)
+            val event = events[0] as DeliveryApproachingEvent
+            assertThat(event.destinationType).isEqualTo(DestinationType.RETURN)
+        }
+
+        @Test
+        @DisplayName("PENDING 상태에서 접근 알림을 보내면 예외가 발생한다")
+        fun `PENDING 상태에서 접근 알림을 보내면 예외가 발생한다`() {
+            val delivery = createDelivery()
+
+            assertThatThrownBy { delivery.approaching() }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("접근 알림을 보낼 수 없는 상태입니다")
+        }
+
+        @Test
+        @DisplayName("COMPLETED 상태에서 접근 알림을 보내면 예외가 발생한다")
+        fun `COMPLETED 상태에서 접근 알림을 보내면 예외가 발생한다`() {
+            val delivery = createDelivery()
+            delivery.assignRobot(RobotId(1L))
+            delivery.arrived()
+            delivery.openDoor()
+            delivery.startDelivery()
+            delivery.arrived()
+            delivery.openDoor()
+            delivery.complete()
+
+            assertThatThrownBy { delivery.approaching() }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("접근 알림을 보낼 수 없는 상태입니다")
+        }
+    }
+
+    @Nested
+    @DisplayName("회수 완료 테스트")
+    inner class CompleteReturnTest {
+        private fun createDeliveryInReturningOffState(): Delivery {
+            val delivery = createDelivery()
+            delivery.assignRobot(RobotId(1L))
+            delivery.arrived()
+            delivery.openDoor()
+            delivery.startDelivery()
+            delivery.cancel()
+            delivery.arrived()
+            delivery.openDoor()
+            return delivery
+        }
+
+        @Test
+        @DisplayName("RETURNING_OFF 상태에서 회수를 완료할 수 있다")
+        fun `RETURNING_OFF 상태에서 회수를 완료할 수 있다`() {
+            val delivery = createDeliveryInReturningOffState()
+
+            delivery.completeReturn()
+
+            assertThat(delivery.status).isEqualTo(DeliveryStatus.RETURN_COMPLETED)
+        }
+
+        @Test
+        @DisplayName("회수 완료 시 DeliveryReturnCompletedEvent가 발생한다")
+        fun `회수 완료 시 DeliveryReturnCompletedEvent가 발생한다`() {
+            val delivery = createDeliveryInReturningOffState()
+            delivery.pullDomainEvents()
+
+            delivery.completeReturn()
+            val events = delivery.pullDomainEvents()
+
+            assertThat(events).hasSize(1)
+            assertThat(events[0]).isInstanceOf(DeliveryReturnCompletedEvent::class.java)
+        }
+
+        @Test
+        @DisplayName("RETURNING 상태에서 회수 완료하면 예외가 발생한다")
+        fun `RETURNING 상태에서 회수 완료하면 예외가 발생한다`() {
+            val delivery = createDelivery()
+            delivery.assignRobot(RobotId(1L))
+            delivery.arrived()
+            delivery.openDoor()
+            delivery.startDelivery()
+            delivery.cancel()
+
+            assertThatThrownBy { delivery.completeReturn() }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("회수 완료 처리할 수 없는 상태입니다")
+        }
+
+        @Test
+        @DisplayName("DROPPING_OFF 상태에서 회수 완료하면 예외가 발생한다")
+        fun `DROPPING_OFF 상태에서 회수 완료하면 예외가 발생한다`() {
+            val delivery = createDelivery()
+            delivery.assignRobot(RobotId(1L))
+            delivery.arrived()
+            delivery.openDoor()
+            delivery.startDelivery()
+            delivery.arrived()
+            delivery.openDoor()
+
+            assertThatThrownBy { delivery.completeReturn() }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("회수 완료 처리할 수 없는 상태입니다")
         }
     }
 
@@ -507,7 +680,7 @@ class DeliveryTest {
         fun `PENDING 상태에서는 픽업 목적지가 현재 목적지다`() {
             val delivery = createDelivery()
 
-            assertEquals(pickupDestination, delivery.getCurrentDestination())
+            assertThat(delivery.getCurrentDestination()).isEqualTo(pickupDestination)
         }
 
         @Test
@@ -516,7 +689,7 @@ class DeliveryTest {
             val delivery = createDelivery()
             delivery.assignRobot(RobotId(1L))
 
-            assertEquals(pickupDestination, delivery.getCurrentDestination())
+            assertThat(delivery.getCurrentDestination()).isEqualTo(pickupDestination)
         }
 
         @Test
@@ -528,7 +701,7 @@ class DeliveryTest {
             delivery.openDoor()
             delivery.startDelivery()
 
-            assertEquals(deliveryDestination, delivery.getCurrentDestination())
+            assertThat(delivery.getCurrentDestination()).isEqualTo(deliveryDestination)
         }
 
         @Test
@@ -541,7 +714,7 @@ class DeliveryTest {
             delivery.startDelivery()
             delivery.cancel()
 
-            assertEquals(pickupDestination, delivery.getCurrentDestination())
+            assertThat(delivery.getCurrentDestination()).isEqualTo(pickupDestination)
         }
     }
 
@@ -558,8 +731,8 @@ class DeliveryTest {
 
             delivery.reassignRobot(newRobotId)
 
-            assertEquals(DeliveryStatus.ASSIGNED, delivery.status)
-            assertEquals(newRobotId, delivery.assignedRobotId)
+            assertThat(delivery.status).isEqualTo(DeliveryStatus.ASSIGNED)
+            assertThat(delivery.assignedRobotId).isEqualTo(newRobotId)
         }
 
         @Test
@@ -573,8 +746,8 @@ class DeliveryTest {
 
             delivery.reassignRobot(newRobotId)
 
-            assertEquals(DeliveryStatus.PICKUP_ARRIVED, delivery.status)
-            assertEquals(newRobotId, delivery.assignedRobotId)
+            assertThat(delivery.status).isEqualTo(DeliveryStatus.PICKUP_ARRIVED)
+            assertThat(delivery.assignedRobotId).isEqualTo(newRobotId)
         }
 
         @Test
@@ -589,8 +762,8 @@ class DeliveryTest {
 
             delivery.reassignRobot(newRobotId)
 
-            assertEquals(DeliveryStatus.PICKING_UP, delivery.status)
-            assertEquals(newRobotId, delivery.assignedRobotId)
+            assertThat(delivery.status).isEqualTo(DeliveryStatus.PICKING_UP)
+            assertThat(delivery.assignedRobotId).isEqualTo(newRobotId)
         }
 
         @Test
@@ -606,8 +779,8 @@ class DeliveryTest {
 
             delivery.reassignRobot(newRobotId)
 
-            assertEquals(DeliveryStatus.DELIVERING, delivery.status)
-            assertEquals(newRobotId, delivery.assignedRobotId)
+            assertThat(delivery.status).isEqualTo(DeliveryStatus.DELIVERING)
+            assertThat(delivery.assignedRobotId).isEqualTo(newRobotId)
         }
 
         @Test
@@ -624,8 +797,8 @@ class DeliveryTest {
 
             delivery.reassignRobot(newRobotId)
 
-            assertEquals(DeliveryStatus.DELIVERY_ARRIVED, delivery.status)
-            assertEquals(newRobotId, delivery.assignedRobotId)
+            assertThat(delivery.status).isEqualTo(DeliveryStatus.DELIVERY_ARRIVED)
+            assertThat(delivery.assignedRobotId).isEqualTo(newRobotId)
         }
 
         @Test
@@ -643,8 +816,8 @@ class DeliveryTest {
 
             delivery.reassignRobot(newRobotId)
 
-            assertEquals(DeliveryStatus.DROPPING_OFF, delivery.status)
-            assertEquals(newRobotId, delivery.assignedRobotId)
+            assertThat(delivery.status).isEqualTo(DeliveryStatus.DROPPING_OFF)
+            assertThat(delivery.assignedRobotId).isEqualTo(newRobotId)
         }
 
         @Test
@@ -659,10 +832,10 @@ class DeliveryTest {
             delivery.reassignRobot(newRobotId)
             val events = delivery.pullDomainEvents()
 
-            assertEquals(1, events.size)
+            assertThat(events).hasSize(1)
             val event = events[0] as DeliveryRobotReassignedEvent
-            assertEquals(oldRobotId, event.previousRobotId)
-            assertEquals(newRobotId, event.newRobotId)
+            assertThat(event.previousRobotId).isEqualTo(oldRobotId)
+            assertThat(event.newRobotId).isEqualTo(newRobotId)
         }
 
         @Test
@@ -671,11 +844,9 @@ class DeliveryTest {
             val delivery = createDelivery()
             val newRobotId = RobotId(2L)
 
-            val exception =
-                assertThrows<IllegalStateException> {
-                    delivery.reassignRobot(newRobotId)
-                }
-            assertTrue(exception.message!!.contains("배차 변경이 불가능한 상태입니다"))
+            assertThatThrownBy { delivery.reassignRobot(newRobotId) }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("배차 변경이 불가능한 상태입니다")
         }
 
         @Test
@@ -690,11 +861,9 @@ class DeliveryTest {
             delivery.openDoor()
             delivery.complete()
 
-            val exception =
-                assertThrows<IllegalStateException> {
-                    delivery.reassignRobot(RobotId(2L))
-                }
-            assertTrue(exception.message!!.contains("배차 변경이 불가능한 상태입니다"))
+            assertThatThrownBy { delivery.reassignRobot(RobotId(2L)) }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("배차 변경이 불가능한 상태입니다")
         }
 
         @Test
@@ -703,11 +872,9 @@ class DeliveryTest {
             val delivery = createDelivery()
             delivery.cancel()
 
-            val exception =
-                assertThrows<IllegalStateException> {
-                    delivery.reassignRobot(RobotId(2L))
-                }
-            assertTrue(exception.message!!.contains("배차 변경이 불가능한 상태입니다"))
+            assertThatThrownBy { delivery.reassignRobot(RobotId(2L)) }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("배차 변경이 불가능한 상태입니다")
         }
 
         @Test
@@ -718,13 +885,11 @@ class DeliveryTest {
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()
-            delivery.cancel() // RETURNING으로 전이
+            delivery.cancel()
 
-            val exception =
-                assertThrows<IllegalStateException> {
-                    delivery.reassignRobot(RobotId(2L))
-                }
-            assertTrue(exception.message!!.contains("배차 변경이 불가능한 상태입니다"))
+            assertThatThrownBy { delivery.reassignRobot(RobotId(2L)) }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("배차 변경이 불가능한 상태입니다")
         }
 
         @Test
@@ -734,11 +899,9 @@ class DeliveryTest {
             val robotId = RobotId(1L)
             delivery.assignRobot(robotId)
 
-            val exception =
-                assertThrows<IllegalStateException> {
-                    delivery.reassignRobot(robotId)
-                }
-            assertTrue(exception.message!!.contains("동일한 로봇으로는 배차 변경할 수 없습니다"))
+            assertThatThrownBy { delivery.reassignRobot(robotId) }
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("동일한 로봇으로는 배차 변경할 수 없습니다")
         }
     }
 
@@ -750,7 +913,7 @@ class DeliveryTest {
         fun `PENDING 상태는 활성 상태다`() {
             val delivery = createDelivery()
 
-            assertTrue(delivery.isActive())
+            assertThat(delivery.isActive()).isTrue()
         }
 
         @Test
@@ -762,7 +925,7 @@ class DeliveryTest {
             delivery.openDoor()
             delivery.startDelivery()
 
-            assertTrue(delivery.isActive())
+            assertThat(delivery.isActive()).isTrue()
         }
 
         @Test
@@ -777,7 +940,7 @@ class DeliveryTest {
             delivery.openDoor()
             delivery.complete()
 
-            assertFalse(delivery.isActive())
+            assertThat(delivery.isActive()).isFalse()
         }
 
         @Test
@@ -786,7 +949,7 @@ class DeliveryTest {
             val delivery = createDelivery()
             delivery.cancel()
 
-            assertFalse(delivery.isActive())
+            assertThat(delivery.isActive()).isFalse()
         }
     }
 }

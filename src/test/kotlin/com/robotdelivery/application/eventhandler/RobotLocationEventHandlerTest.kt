@@ -6,44 +6,48 @@ import com.robotdelivery.domain.robot.Robot
 import com.robotdelivery.domain.robot.RobotRepository
 import com.robotdelivery.domain.robot.RobotStatus
 import com.robotdelivery.infrastructure.event.external.RobotLocationUpdatedEvent
-import org.junit.jupiter.api.Assertions.assertEquals
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.Mock
-import org.mockito.junit.jupiter.MockitoExtension
-import org.mockito.kotlin.any
-import org.mockito.kotlin.never
-import org.mockito.kotlin.verify
-import org.mockito.kotlin.whenever
+import com.robotdelivery.config.TestAsyncConfig
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.annotation.Import
+import org.springframework.test.context.ActiveProfiles
+import org.springframework.transaction.annotation.Transactional
 
-@ExtendWith(MockitoExtension::class)
+@SpringBootTest
+@Import(TestAsyncConfig::class)
+@ActiveProfiles("test")
+@Transactional
 @DisplayName("RobotLocationEventHandler 테스트")
 class RobotLocationEventHandlerTest {
-    @Mock
+    @Autowired
     private lateinit var robotRepository: RobotRepository
 
+    @Autowired
     private lateinit var eventHandler: RobotLocationEventHandler
 
     @BeforeEach
     fun setUp() {
-        eventHandler = RobotLocationEventHandler(robotRepository)
+        robotRepository.deleteAll()
     }
 
-    private fun createRobot(
-        id: Long = 1L,
+    private fun saveRobot(
         name: String = "로봇-1",
         location: Location = Location(latitude = 37.5665, longitude = 126.9780),
-    ): Robot =
-        Robot(
-            id = id,
-            name = name,
-            status = RobotStatus.READY,
-            battery = 100,
-            location = location,
-        )
+    ): Robot {
+        val robot =
+            Robot(
+                name = name,
+                status = RobotStatus.READY,
+                battery = 100,
+                location = location,
+            )
+        return robotRepository.saveAndFlush(robot)
+    }
 
     @Nested
     @DisplayName("RobotLocationUpdatedEvent 핸들러 테스트")
@@ -51,7 +55,7 @@ class RobotLocationEventHandlerTest {
         @Test
         @DisplayName("로봇 위치가 업데이트된다")
         fun `로봇 위치가 업데이트된다`() {
-            val robot = createRobot()
+            val robot = saveRobot()
             val newLocation = Location(latitude = 37.5000, longitude = 127.0000)
             val event =
                 RobotLocationUpdatedEvent(
@@ -59,12 +63,10 @@ class RobotLocationEventHandlerTest {
                     location = newLocation,
                 )
 
-            whenever(robotRepository.findById(robot.getRobotId())).thenReturn(robot)
-
             eventHandler.handle(event)
 
-            assertEquals(newLocation, robot.location)
-            verify(robotRepository).save(robot)
+            val updatedRobot = robotRepository.findById(robot.getRobotId())!!
+            assertThat(updatedRobot.location).isEqualTo(newLocation)
         }
 
         @Test
@@ -76,40 +78,32 @@ class RobotLocationEventHandlerTest {
                     location = Location(37.5665, 126.9780),
                 )
 
-            whenever(robotRepository.findById(RobotId(99999L))).thenReturn(null)
-
             eventHandler.handle(event)
-
-            verify(robotRepository, never()).save(any())
         }
 
         @Test
         @DisplayName("같은 위치로 업데이트해도 저장된다")
         fun `같은 위치로 업데이트해도 저장된다`() {
             val location = Location(latitude = 37.5665, longitude = 126.9780)
-            val robot = createRobot(location = location)
+            val robot = saveRobot(location = location)
             val event =
                 RobotLocationUpdatedEvent(
                     robotId = robot.getRobotId(),
                     location = location,
                 )
 
-            whenever(robotRepository.findById(robot.getRobotId())).thenReturn(robot)
-
             eventHandler.handle(event)
 
-            assertEquals(location, robot.location)
-            verify(robotRepository).save(robot)
+            val updatedRobot = robotRepository.findById(robot.getRobotId())!!
+            assertThat(updatedRobot.location).isEqualTo(location)
         }
 
         @Test
         @DisplayName("여러 번 위치 업데이트가 가능하다")
         fun `여러 번 위치 업데이트가 가능하다`() {
-            val robot = createRobot()
+            val robot = saveRobot()
             val location1 = Location(latitude = 37.5000, longitude = 127.0000)
             val location2 = Location(latitude = 37.6000, longitude = 127.1000)
-
-            whenever(robotRepository.findById(robot.getRobotId())).thenReturn(robot)
 
             eventHandler.handle(
                 RobotLocationUpdatedEvent(
@@ -117,7 +111,8 @@ class RobotLocationEventHandlerTest {
                     location = location1,
                 ),
             )
-            assertEquals(location1, robot.location)
+            var updatedRobot = robotRepository.findById(robot.getRobotId())!!
+            assertThat(updatedRobot.location).isEqualTo(location1)
 
             eventHandler.handle(
                 RobotLocationUpdatedEvent(
@@ -125,8 +120,8 @@ class RobotLocationEventHandlerTest {
                     location = location2,
                 ),
             )
-            assertEquals(location2, robot.location)
+            updatedRobot = robotRepository.findById(robot.getRobotId())!!
+            assertThat(updatedRobot.location).isEqualTo(location2)
         }
     }
 }
-

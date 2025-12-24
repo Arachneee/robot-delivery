@@ -1,12 +1,12 @@
 package com.robotdelivery.domain.common
 
-import org.junit.jupiter.api.Assertions.assertDoesNotThrow
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatCode
+import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.assertj.core.api.Assertions.within
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 
 @DisplayName("Location 테스트")
 class LocationTest {
@@ -18,56 +18,48 @@ class LocationTest {
         fun `유효한 좌표로 Location을 생성할 수 있다`() {
             val location = Location(latitude = 37.5665, longitude = 126.9780)
 
-            assertEquals(37.5665, location.latitude)
-            assertEquals(126.9780, location.longitude)
+            assertThat(location.latitude).isEqualTo(37.5665)
+            assertThat(location.longitude).isEqualTo(126.9780)
         }
 
         @Test
         @DisplayName("위도가 -90보다 작으면 예외가 발생한다")
         fun `위도가 -90보다 작으면 예외가 발생한다`() {
-            val exception =
-                assertThrows<IllegalArgumentException> {
-                    Location(latitude = -91.0, longitude = 0.0)
-                }
-            assertEquals("위도는 -90에서 90 사이여야 합니다.", exception.message)
+            assertThatThrownBy { Location(latitude = -91.0, longitude = 0.0) }
+                .isInstanceOf(IllegalArgumentException::class.java)
+                .hasMessage("위도는 -90에서 90 사이여야 합니다.")
         }
 
         @Test
         @DisplayName("위도가 90보다 크면 예외가 발생한다")
         fun `위도가 90보다 크면 예외가 발생한다`() {
-            val exception =
-                assertThrows<IllegalArgumentException> {
-                    Location(latitude = 91.0, longitude = 0.0)
-                }
-            assertEquals("위도는 -90에서 90 사이여야 합니다.", exception.message)
+            assertThatThrownBy { Location(latitude = 91.0, longitude = 0.0) }
+                .isInstanceOf(IllegalArgumentException::class.java)
+                .hasMessage("위도는 -90에서 90 사이여야 합니다.")
         }
 
         @Test
         @DisplayName("경도가 -180보다 작으면 예외가 발생한다")
         fun `경도가 -180보다 작으면 예외가 발생한다`() {
-            val exception =
-                assertThrows<IllegalArgumentException> {
-                    Location(latitude = 0.0, longitude = -181.0)
-                }
-            assertEquals("경도는 -180에서 180 사이여야 합니다.", exception.message)
+            assertThatThrownBy { Location(latitude = 0.0, longitude = -181.0) }
+                .isInstanceOf(IllegalArgumentException::class.java)
+                .hasMessage("경도는 -180에서 180 사이여야 합니다.")
         }
 
         @Test
         @DisplayName("경도가 180보다 크면 예외가 발생한다")
         fun `경도가 180보다 크면 예외가 발생한다`() {
-            val exception =
-                assertThrows<IllegalArgumentException> {
-                    Location(latitude = 0.0, longitude = 181.0)
-                }
-            assertEquals("경도는 -180에서 180 사이여야 합니다.", exception.message)
+            assertThatThrownBy { Location(latitude = 0.0, longitude = 181.0) }
+                .isInstanceOf(IllegalArgumentException::class.java)
+                .hasMessage("경도는 -180에서 180 사이여야 합니다.")
         }
 
         @Test
         @DisplayName("경계값 좌표로 Location을 생성할 수 있다")
         fun `경계값 좌표로 Location을 생성할 수 있다`() {
-            assertDoesNotThrow { Location(latitude = -90.0, longitude = -180.0) }
-            assertDoesNotThrow { Location(latitude = 90.0, longitude = 180.0) }
-            assertDoesNotThrow { Location(latitude = 0.0, longitude = 0.0) }
+            assertThatCode { Location(latitude = -90.0, longitude = -180.0) }.doesNotThrowAnyException()
+            assertThatCode { Location(latitude = 90.0, longitude = 180.0) }.doesNotThrowAnyException()
+            assertThatCode { Location(latitude = 0.0, longitude = 0.0) }.doesNotThrowAnyException()
         }
     }
 
@@ -80,7 +72,7 @@ class LocationTest {
             val location = Location(latitude = 37.5665, longitude = 126.9780)
             val distance = location.distanceTo(location)
 
-            assertEquals(0.0, distance, 0.001)
+            assertThat(distance).isCloseTo(0.0, within(0.001))
         }
 
         @Test
@@ -91,8 +83,7 @@ class LocationTest {
 
             val distance = seoulCityHall.distanceTo(gangnamStation)
 
-            // 약 9km 정도 거리
-            assertTrue(distance > 8000 && distance < 10000)
+            assertThat(distance).isBetween(8000.0, 10000.0)
         }
 
         @Test
@@ -104,7 +95,7 @@ class LocationTest {
             val distanceAB = locationA.distanceTo(locationB)
             val distanceBA = locationB.distanceTo(locationA)
 
-            assertEquals(distanceAB, distanceBA, 0.001)
+            assertThat(distanceAB).isCloseTo(distanceBA, within(0.001))
         }
 
         @Test
@@ -115,8 +106,7 @@ class LocationTest {
 
             val distance = location1.distanceTo(location2)
 
-            // 매우 가까운 거리 (약 13m 정도)
-            assertTrue(distance > 0 && distance < 20)
+            assertThat(distance).isGreaterThan(0.0).isLessThan(20.0)
         }
     }
 }

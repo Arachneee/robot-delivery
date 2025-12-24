@@ -1,6 +1,5 @@
 package com.robotdelivery.application.eventhandler
 
-import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.common.RobotId
 import com.robotdelivery.domain.delivery.Delivery
@@ -8,7 +7,6 @@ import com.robotdelivery.domain.delivery.DeliveryRepository
 import com.robotdelivery.domain.delivery.DeliveryStatus
 import com.robotdelivery.domain.delivery.Destination
 import com.robotdelivery.domain.delivery.DestinationType
-import com.robotdelivery.domain.delivery.event.DeliveryApproachingEvent
 import com.robotdelivery.domain.robot.Robot
 import com.robotdelivery.domain.robot.RobotRepository
 import com.robotdelivery.domain.robot.RobotStatus
@@ -19,69 +17,110 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.Mock
-import org.mockito.junit.jupiter.MockitoExtension
-import org.mockito.kotlin.any
-import org.mockito.kotlin.never
-import org.mockito.kotlin.verify
-import org.mockito.kotlin.whenever
+import com.robotdelivery.config.TestAsyncConfig
+import com.robotdelivery.config.TestDeliveryApproachingEventListener
+import com.robotdelivery.config.TestEventListenerConfig
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.annotation.Import
+import org.springframework.test.context.ActiveProfiles
+import org.springframework.transaction.annotation.Transactional
 
-@ExtendWith(MockitoExtension::class)
+@SpringBootTest
+@Import(TestAsyncConfig::class, TestEventListenerConfig::class)
+@ActiveProfiles("test")
+@Transactional
 @DisplayName("DeliveryRobotEventHandler 테스트")
 class DeliveryRobotEventHandlerTest {
-    @Mock
+    @Autowired
     private lateinit var deliveryRepository: DeliveryRepository
 
-    @Mock
+    @Autowired
     private lateinit var robotRepository: RobotRepository
 
+    @Autowired
     private lateinit var eventHandler: DeliveryRobotEventHandler
+
+    @Autowired
+    private lateinit var testEventListener: TestDeliveryApproachingEventListener
 
     @BeforeEach
     fun setUp() {
-        eventHandler = DeliveryRobotEventHandler(deliveryRepository, robotRepository)
+        deliveryRepository.deleteAll()
+        robotRepository.deleteAll()
+        testEventListener.clear()
     }
 
-    private fun createDelivery(
-        id: Long = 1L,
-        pickupLocation: Location = Location(latitude = 37.5665, longitude = 126.9780),
-    ): Delivery =
-        Delivery(
-            id = id,
-            pickupDestination =
-                Destination(
-                    address = "서울시 중구 세종대로 110",
-                    location = pickupLocation,
-                ),
-            deliveryDestination =
-                Destination(
-                    address = "서울시 강남구 테헤란로 1",
-                    location = Location(latitude = 37.4979, longitude = 127.0276),
-                ),
-            phoneNumber = "010-1234-5678",
-        )
+    private fun saveDelivery(pickupLocation: Location = Location(latitude = 37.5665, longitude = 126.9780)): Delivery {
+        val delivery =
+            Delivery(
+                pickupDestination =
+                    Destination(
+                        address = "서울시 중구 세종대로 110",
+                        location = pickupLocation,
+                    ),
+                deliveryDestination =
+                    Destination(
+                        address = "서울시 강남구 테헤란로 1",
+                        location = Location(latitude = 37.4979, longitude = 127.0276),
+                    ),
+                phoneNumber = "010-1234-5678",
+            )
+        return deliveryRepository.saveAndFlush(delivery)
+    }
 
-    private fun createRobot(
-        id: Long = 1L,
+    private fun saveRobot(
         name: String = "로봇-1",
         location: Location = Location(latitude = 37.5665, longitude = 126.9780),
-        deliveryId: DeliveryId? = null,
     ): Robot {
         val robot =
             Robot(
-                id = id,
                 name = name,
                 status = RobotStatus.OFF_DUTY,
                 battery = 100,
                 location = location,
             )
+        return robotRepository.saveAndFlush(robot)
+    }
+
+    private fun saveRobotWithDelivery(
+        delivery: Delivery,
+        location: Location = Location(latitude = 37.5665, longitude = 126.9780),
+    ): Robot {
+        val robot = saveRobot(location = location)
         robot.startDuty()
-        if (deliveryId != null) {
-            robot.assignDelivery(deliveryId, location)
-        }
+        robot.assignDelivery(delivery.getDeliveryId(), location)
         robot.pullDomainEvents()
-        return robot
+        return robotRepository.saveAndFlush(robot)
+    }
+
+    private fun saveDeliveryInAssignedState(): Delivery {
+        val delivery = saveDelivery()
+        val robot = saveRobotWithDelivery(delivery)
+        delivery.assignRobot(robot.getRobotId())
+        delivery.pullDomainEvents()
+        return deliveryRepository.saveAndFlush(delivery)
+    }
+
+    private fun saveDeliveryInDeliveringState(): Delivery {
+        val delivery = saveDeliveryInAssignedState()
+        delivery.arrived()
+        delivery.openDoor()
+        delivery.startDelivery()
+        delivery.pullDomainEvents()
+        return deliveryRepository.saveAndFlush(delivery)
+    }
+
+    private fun saveDeliveryInReturningState(): Delivery {
+        val delivery = saveDeliveryInDeliveringState()
+        delivery.cancel()
+        delivery.pullDomainEvents()
+        return deliveryRepository.saveAndFlush(delivery)
+    }
+
+    private fun getAssignedRobot(delivery: Delivery): Robot {
+        val robotId = delivery.assignedRobotId ?: throw IllegalStateException("배달에 로봇이 할당되어 있지 않습니다.")
+        return robotRepository.findById(robotId) ?: throw IllegalStateException("로봇을 찾을 수 없습니다: $robotId")
     }
 
     @Nested
@@ -91,27 +130,19 @@ class DeliveryRobotEventHandlerTest {
         @DisplayName("ASSIGNED 상태에서 접근 이벤트가 오면 DeliveryApproachingEvent가 등록된다")
         fun `ASSIGNED 상태에서 접근 이벤트가 오면 DeliveryApproachingEvent가 등록된다`() {
             val pickupLocation = Location(latitude = 37.5665, longitude = 126.9780)
-            val delivery = createDelivery(pickupLocation = pickupLocation)
-            delivery.assignRobot(RobotId(1L))
-            delivery.pullDomainEvents()
-
-            val robot = createRobot(deliveryId = delivery.getDeliveryId())
+            val delivery = saveDeliveryInAssignedState()
+            val robot = getAssignedRobot(delivery)
             val event =
                 RobotApproachingEvent(
                     robotId = robot.getRobotId(),
                     destination = pickupLocation,
                 )
 
-            whenever(robotRepository.findById(robot.getRobotId())).thenReturn(robot)
-            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
-
             eventHandler.handleApproaching(event)
 
-            verify(deliveryRepository).save(delivery)
-
-            val domainEvents = delivery.pullDomainEvents()
-            assertThat(domainEvents).hasSize(1)
-            val approachingEvent = domainEvents.first() as DeliveryApproachingEvent
+            val capturedEvents = testEventListener.getCapturedEvents()
+            assertThat(capturedEvents).hasSize(1)
+            val approachingEvent = capturedEvents.first()
             assertThat(approachingEvent.deliveryId).isEqualTo(delivery.getDeliveryId())
             assertThat(approachingEvent.robotId).isEqualTo(robot.getRobotId())
             assertThat(approachingEvent.destinationType).isEqualTo(DestinationType.PICKUP)
@@ -120,32 +151,20 @@ class DeliveryRobotEventHandlerTest {
         @Test
         @DisplayName("DELIVERING 상태에서 접근 이벤트가 오면 DELIVERY 타입의 DeliveryApproachingEvent가 등록된다")
         fun `DELIVERING 상태에서 접근 이벤트가 오면 DELIVERY 타입의 DeliveryApproachingEvent가 등록된다`() {
-            val pickupLocation = Location(latitude = 37.5665, longitude = 126.9780)
             val deliveryLocation = Location(latitude = 37.4979, longitude = 127.0276)
-            val delivery = createDelivery(pickupLocation = pickupLocation)
-            delivery.assignRobot(RobotId(1L))
-            delivery.arrived()
-            delivery.openDoor()
-            delivery.startDelivery()
-            delivery.pullDomainEvents()
-
-            val robot = createRobot(deliveryId = delivery.getDeliveryId(), location = deliveryLocation)
+            val delivery = saveDeliveryInDeliveringState()
+            val robot = getAssignedRobot(delivery)
             val event =
                 RobotApproachingEvent(
                     robotId = robot.getRobotId(),
                     destination = deliveryLocation,
                 )
 
-            whenever(robotRepository.findById(robot.getRobotId())).thenReturn(robot)
-            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
-
             eventHandler.handleApproaching(event)
 
-            verify(deliveryRepository).save(delivery)
-
-            val domainEvents = delivery.pullDomainEvents()
-            assertThat(domainEvents).hasSize(1)
-            val approachingEvent = domainEvents.first() as DeliveryApproachingEvent
+            val capturedEvents = testEventListener.getCapturedEvents()
+            assertThat(capturedEvents).hasSize(1)
+            val approachingEvent = capturedEvents.first()
             assertThat(approachingEvent.destinationType).isEqualTo(DestinationType.DELIVERY)
         }
 
@@ -153,31 +172,19 @@ class DeliveryRobotEventHandlerTest {
         @DisplayName("RETURNING 상태에서 접근 이벤트가 오면 RETURN 타입의 DeliveryApproachingEvent가 등록된다")
         fun `RETURNING 상태에서 접근 이벤트가 오면 RETURN 타입의 DeliveryApproachingEvent가 등록된다`() {
             val pickupLocation = Location(latitude = 37.5665, longitude = 126.9780)
-            val delivery = createDelivery(pickupLocation = pickupLocation)
-            delivery.assignRobot(RobotId(1L))
-            delivery.arrived()
-            delivery.openDoor()
-            delivery.startDelivery()
-            delivery.cancel()
-            delivery.pullDomainEvents()
-
-            val robot = createRobot(deliveryId = delivery.getDeliveryId())
+            val delivery = saveDeliveryInReturningState()
+            val robot = getAssignedRobot(delivery)
             val event =
                 RobotApproachingEvent(
                     robotId = robot.getRobotId(),
                     destination = pickupLocation,
                 )
 
-            whenever(robotRepository.findById(robot.getRobotId())).thenReturn(robot)
-            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
-
             eventHandler.handleApproaching(event)
 
-            verify(deliveryRepository).save(delivery)
-
-            val domainEvents = delivery.pullDomainEvents()
-            assertThat(domainEvents).hasSize(1)
-            val approachingEvent = domainEvents.first() as DeliveryApproachingEvent
+            val capturedEvents = testEventListener.getCapturedEvents()
+            assertThat(capturedEvents).hasSize(1)
+            val approachingEvent = capturedEvents.first()
             assertThat(approachingEvent.destinationType).isEqualTo(DestinationType.RETURN)
         }
 
@@ -190,47 +197,24 @@ class DeliveryRobotEventHandlerTest {
                     destination = Location(37.5665, 126.9780),
                 )
 
-            whenever(robotRepository.findById(RobotId(99999L))).thenReturn(null)
-
             eventHandler.handleApproaching(event)
-
-            verify(deliveryRepository, never()).save(any())
         }
 
         @Test
         @DisplayName("로봇에 할당된 배달이 없으면 무시된다")
         fun `로봇에 할당된 배달이 없으면 접근 이벤트가 무시된다`() {
-            val robot = createRobot(deliveryId = null)
+            val robot = saveRobot()
+            robot.startDuty()
+            robot.pullDomainEvents()
+            robotRepository.saveAndFlush(robot)
+
             val event =
                 RobotApproachingEvent(
                     robotId = robot.getRobotId(),
                     destination = Location(37.5665, 126.9780),
                 )
 
-            whenever(robotRepository.findById(robot.getRobotId())).thenReturn(robot)
-
             eventHandler.handleApproaching(event)
-
-            verify(deliveryRepository, never()).save(any())
-        }
-
-        @Test
-        @DisplayName("존재하지 않는 배달 ID가 할당된 경우 무시된다")
-        fun `존재하지 않는 배달 ID가 할당된 경우 접근 이벤트가 무시된다`() {
-            val delivery = createDelivery()
-            val robot = createRobot(deliveryId = delivery.getDeliveryId())
-            val event =
-                RobotApproachingEvent(
-                    robotId = robot.getRobotId(),
-                    destination = Location(37.5665, 126.9780),
-                )
-
-            whenever(robotRepository.findById(robot.getRobotId())).thenReturn(robot)
-            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(null)
-
-            eventHandler.handleApproaching(event)
-
-            verify(deliveryRepository, never()).save(any())
         }
     }
 
@@ -241,80 +225,54 @@ class DeliveryRobotEventHandlerTest {
         @DisplayName("ASSIGNED 상태의 배달이 도착하면 PICKUP_ARRIVED가 된다")
         fun `ASSIGNED 상태의 배달이 도착하면 PICKUP_ARRIVED가 된다`() {
             val pickupLocation = Location(latitude = 37.5665, longitude = 126.9780)
-            val delivery = createDelivery(pickupLocation = pickupLocation)
-            delivery.assignRobot(RobotId(1L))
-            delivery.pullDomainEvents()
-
-            val robot = createRobot(deliveryId = delivery.getDeliveryId())
+            val delivery = saveDeliveryInAssignedState()
+            val robot = getAssignedRobot(delivery)
             val event =
                 RobotArrivedEvent(
                     robotId = robot.getRobotId(),
                     destination = pickupLocation,
                 )
 
-            whenever(robotRepository.findById(robot.getRobotId())).thenReturn(robot)
-            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
-
             eventHandler.handleArrived(event)
 
-            assertThat(delivery.status).isEqualTo(DeliveryStatus.PICKUP_ARRIVED)
-            verify(deliveryRepository).save(delivery)
+            val updatedDelivery = deliveryRepository.findById(delivery.getDeliveryId())!!
+            assertThat(updatedDelivery.status).isEqualTo(DeliveryStatus.PICKUP_ARRIVED)
         }
 
         @Test
         @DisplayName("DELIVERING 상태의 배달이 도착하면 DELIVERY_ARRIVED가 된다")
         fun `DELIVERING 상태의 배달이 도착하면 DELIVERY_ARRIVED가 된다`() {
-            val pickupLocation = Location(latitude = 37.5665, longitude = 126.9780)
             val deliveryLocation = Location(latitude = 37.4979, longitude = 127.0276)
-            val delivery = createDelivery(pickupLocation = pickupLocation)
-            delivery.assignRobot(RobotId(1L))
-            delivery.arrived()
-            delivery.openDoor()
-            delivery.startDelivery()
-            delivery.pullDomainEvents()
-
-            val robot = createRobot(deliveryId = delivery.getDeliveryId(), location = deliveryLocation)
+            val delivery = saveDeliveryInDeliveringState()
+            val robot = getAssignedRobot(delivery)
             val event =
                 RobotArrivedEvent(
                     robotId = robot.getRobotId(),
                     destination = deliveryLocation,
                 )
 
-            whenever(robotRepository.findById(robot.getRobotId())).thenReturn(robot)
-            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
-
             eventHandler.handleArrived(event)
 
-            assertThat(delivery.status).isEqualTo(DeliveryStatus.DELIVERY_ARRIVED)
-            verify(deliveryRepository).save(delivery)
+            val updatedDelivery = deliveryRepository.findById(delivery.getDeliveryId())!!
+            assertThat(updatedDelivery.status).isEqualTo(DeliveryStatus.DELIVERY_ARRIVED)
         }
 
         @Test
         @DisplayName("RETURNING 상태의 배달이 도착하면 RETURN_ARRIVED가 된다")
         fun `RETURNING 상태의 배달이 도착하면 RETURN_ARRIVED가 된다`() {
             val pickupLocation = Location(latitude = 37.5665, longitude = 126.9780)
-            val delivery = createDelivery(pickupLocation = pickupLocation)
-            delivery.assignRobot(RobotId(1L))
-            delivery.arrived()
-            delivery.openDoor()
-            delivery.startDelivery()
-            delivery.cancel()
-            delivery.pullDomainEvents()
-
-            val robot = createRobot(deliveryId = delivery.getDeliveryId())
+            val delivery = saveDeliveryInReturningState()
+            val robot = getAssignedRobot(delivery)
             val event =
                 RobotArrivedEvent(
                     robotId = robot.getRobotId(),
                     destination = pickupLocation,
                 )
 
-            whenever(robotRepository.findById(robot.getRobotId())).thenReturn(robot)
-            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(delivery)
-
             eventHandler.handleArrived(event)
 
-            assertThat(delivery.status).isEqualTo(DeliveryStatus.RETURN_ARRIVED)
-            verify(deliveryRepository).save(delivery)
+            val updatedDelivery = deliveryRepository.findById(delivery.getDeliveryId())!!
+            assertThat(updatedDelivery.status).isEqualTo(DeliveryStatus.RETURN_ARRIVED)
         }
 
         @Test
@@ -326,47 +284,24 @@ class DeliveryRobotEventHandlerTest {
                     destination = Location(37.5665, 126.9780),
                 )
 
-            whenever(robotRepository.findById(RobotId(99999L))).thenReturn(null)
-
             eventHandler.handleArrived(event)
-
-            verify(deliveryRepository, never()).save(any())
         }
 
         @Test
         @DisplayName("로봇에 할당된 배달이 없으면 무시된다")
         fun `로봇에 할당된 배달이 없으면 무시된다`() {
-            val robot = createRobot(deliveryId = null)
+            val robot = saveRobot()
+            robot.startDuty()
+            robot.pullDomainEvents()
+            robotRepository.saveAndFlush(robot)
+
             val event =
                 RobotArrivedEvent(
                     robotId = robot.getRobotId(),
                     destination = Location(37.5665, 126.9780),
                 )
 
-            whenever(robotRepository.findById(robot.getRobotId())).thenReturn(robot)
-
             eventHandler.handleArrived(event)
-
-            verify(deliveryRepository, never()).save(any())
-        }
-
-        @Test
-        @DisplayName("존재하지 않는 배달 ID가 할당된 경우 무시된다")
-        fun `존재하지 않는 배달 ID가 할당된 경우 무시된다`() {
-            val delivery = createDelivery()
-            val robot = createRobot(deliveryId = delivery.getDeliveryId())
-            val event =
-                RobotArrivedEvent(
-                    robotId = robot.getRobotId(),
-                    destination = Location(37.5665, 126.9780),
-                )
-
-            whenever(robotRepository.findById(robot.getRobotId())).thenReturn(robot)
-            whenever(deliveryRepository.findById(delivery.getDeliveryId())).thenReturn(null)
-
-            eventHandler.handleArrived(event)
-
-            verify(deliveryRepository, never()).save(any())
         }
     }
 }

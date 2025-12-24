@@ -1,72 +1,77 @@
 package com.robotdelivery.domain.delivery
 
-import com.robotdelivery.domain.common.DeliveryId
+import com.robotdelivery.config.TestAsyncConfig
 import com.robotdelivery.domain.common.Location
-import com.robotdelivery.domain.common.RobotId
 import com.robotdelivery.domain.robot.Robot
 import com.robotdelivery.domain.robot.RobotRepository
 import com.robotdelivery.domain.robot.RobotStatus
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNull
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
-import org.junit.jupiter.api.assertNotNull
-import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.Mock
-import org.mockito.junit.jupiter.MockitoExtension
-import org.mockito.kotlin.whenever
-import kotlin.test.Test
+import org.junit.jupiter.api.Test
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.annotation.Import
+import org.springframework.test.context.ActiveProfiles
+import org.springframework.transaction.annotation.Transactional
 
-@ExtendWith(MockitoExtension::class)
+@SpringBootTest
+@Import(TestAsyncConfig::class)
+@ActiveProfiles("test")
+@Transactional
 @DisplayName("DeliveryAssignmentService 테스트")
 class DeliveryAssignmentServiceTest {
-    @Mock
+    @Autowired
     private lateinit var robotRepository: RobotRepository
 
-    @Mock
+    @Autowired
     private lateinit var deliveryRepository: DeliveryRepository
 
+    @Autowired
     private lateinit var assignmentService: DeliveryAssignmentService
 
     @BeforeEach
     fun setUp() {
-        assignmentService = DeliveryAssignmentService(robotRepository, deliveryRepository)
+        deliveryRepository.deleteAll()
+        robotRepository.deleteAll()
     }
 
-    private fun createDelivery(
-        id: Long = 1L,
-        pickupLocation: Location = Location(latitude = 37.5665, longitude = 126.9780),
-    ): Delivery =
-        Delivery(
-            id = id,
-            pickupDestination =
-                Destination(
-                    address = "서울시 중구 세종대로 110",
-                    location = pickupLocation,
-                ),
-            deliveryDestination =
-                Destination(
-                    address = "서울시 강남구 테헤란로 1",
-                    location = Location(latitude = 37.4979, longitude = 127.0276),
-                ),
-            phoneNumber = "010-1234-5678",
-        )
+    private fun saveDelivery(pickupLocation: Location = Location(latitude = 37.5665, longitude = 126.9780)): Delivery {
+        val delivery =
+            Delivery(
+                pickupDestination =
+                    Destination(
+                        address = "서울시 중구 세종대로 110",
+                        location = pickupLocation,
+                    ),
+                deliveryDestination =
+                    Destination(
+                        address = "서울시 강남구 테헤란로 1",
+                        location = Location(latitude = 37.4979, longitude = 127.0276),
+                    ),
+                phoneNumber = "010-1234-5678",
+            )
+        delivery.pullDomainEvents()
+        return deliveryRepository.saveAndFlush(delivery)
+    }
 
-    private fun createRobot(
-        id: Long,
+    private fun saveReadyRobot(
         name: String,
-        status: RobotStatus = RobotStatus.READY,
-        battery: Int = 100,
         location: Location,
-    ): Robot =
-        Robot(
-            id = id,
-            name = name,
-            status = status,
-            battery = battery,
-            location = location,
-        )
+    ): Robot {
+        val robot =
+            Robot(
+                name = name,
+                status = RobotStatus.OFF_DUTY,
+                battery = 100,
+                location = location,
+            )
+        val savedRobot = robotRepository.saveAndFlush(robot)
+        savedRobot.startDuty()
+        savedRobot.pullDomainEvents()
+        return robotRepository.saveAndFlush(savedRobot)
+    }
 
     @Nested
     @DisplayName("가장 가까운 로봇 배정 테스트")
@@ -74,104 +79,84 @@ class DeliveryAssignmentServiceTest {
         @Test
         @DisplayName("가장 가까운 로봇이 배정된다")
         fun `가장 가까운 로봇이 배정된다`() {
-            // 픽업 위치: 서울시청
             val pickupLocation = Location(latitude = 37.5665, longitude = 126.9780)
-            val delivery = createDelivery(pickupLocation = pickupLocation)
+            val delivery = saveDelivery(pickupLocation = pickupLocation)
 
-            // 강남역 근처 로봇 (더 멀리)
             val farRobot =
-                createRobot(
-                    id = 1L,
+                saveReadyRobot(
                     name = "로봇-far",
                     location = Location(latitude = 37.4979, longitude = 127.0276),
                 )
-            // 시청 근처 로봇 (더 가까이)
             val nearRobot =
-                createRobot(
-                    id = 2L,
+                saveReadyRobot(
                     name = "로봇-near",
                     location = Location(latitude = 37.5660, longitude = 126.9770),
                 )
 
-            whenever(robotRepository.findAllByStatus(RobotStatus.READY)).thenReturn(listOf(farRobot, nearRobot))
-
             val assignedRobot = assignmentService.assignNearestRobotToDelivery(delivery)
 
-            assertNotNull(assignedRobot)
-            assertEquals(nearRobot.id, assignedRobot!!.id)
-            assertEquals(DeliveryStatus.ASSIGNED, delivery.status)
-            assertEquals(RobotId(nearRobot.id), delivery.assignedRobotId)
+            assertThat(assignedRobot).isNotNull
+            assertThat(assignedRobot!!.id).isEqualTo(nearRobot.id)
+            assertThat(delivery.status).isEqualTo(DeliveryStatus.ASSIGNED)
+            assertThat(delivery.assignedRobotId).isEqualTo(nearRobot.getRobotId())
         }
 
         @Test
         @DisplayName("사용 가능한 로봇이 없으면 null을 반환한다")
         fun `사용 가능한 로봇이 없으면 null을 반환한다`() {
-            val delivery = createDelivery()
-
-            whenever(robotRepository.findAllByStatus(RobotStatus.READY)).thenReturn(emptyList())
+            val delivery = saveDelivery()
 
             val assignedRobot = assignmentService.assignNearestRobotToDelivery(delivery)
 
-            assertNull(assignedRobot)
-            assertEquals(DeliveryStatus.PENDING, delivery.status)
-            assertNull(delivery.assignedRobotId)
+            assertThat(assignedRobot).isNull()
+            assertThat(delivery.status).isEqualTo(DeliveryStatus.PENDING)
+            assertThat(delivery.assignedRobotId).isNull()
         }
 
         @Test
         @DisplayName("로봇에도 배달이 할당된다")
         fun `로봇에도 배달이 할당된다`() {
-            val delivery = createDelivery()
-            val robot =
-                createRobot(
-                    id = 1L,
-                    name = "로봇-1",
-                    location = Location(latitude = 37.5665, longitude = 126.9780),
-                )
-
-            whenever(robotRepository.findAllByStatus(RobotStatus.READY)).thenReturn(listOf(robot))
+            val delivery = saveDelivery()
+            saveReadyRobot(
+                name = "로봇-1",
+                location = Location(latitude = 37.5665, longitude = 126.9780),
+            )
 
             val assignedRobot = assignmentService.assignNearestRobotToDelivery(delivery)
 
-            assertNotNull(assignedRobot)
-            assertEquals(RobotStatus.BUSY, assignedRobot!!.status)
-            assertEquals(DeliveryId(delivery.id), assignedRobot.currentDeliveryId)
+            assertThat(assignedRobot).isNotNull
+            assertThat(assignedRobot!!.status).isEqualTo(RobotStatus.BUSY)
+            assertThat(assignedRobot.currentDeliveryId).isEqualTo(delivery.getDeliveryId())
         }
 
         @Test
         @DisplayName("여러 로봇 중 가장 가까운 로봇이 선택된다")
         fun `여러 로봇 중 가장 가까운 로봇이 선택된다`() {
             val pickupLocation = Location(latitude = 37.5000, longitude = 127.0000)
-            val delivery = createDelivery(pickupLocation = pickupLocation)
+            val delivery = saveDelivery(pickupLocation = pickupLocation)
 
-            // 거리 순서: robot3 < robot1 < robot2
-            val robot1 = createRobot(id = 1L, name = "로봇-1", location = Location(37.5010, 127.0010))
-            val robot2 = createRobot(id = 2L, name = "로봇-2", location = Location(37.5020, 127.0020))
-            val robot3 = createRobot(id = 3L, name = "로봇-3", location = Location(37.5005, 127.0005))
-
-            whenever(robotRepository.findAllByStatus(RobotStatus.READY)).thenReturn(listOf(robot1, robot2, robot3))
+            saveReadyRobot(name = "로봇-1", location = Location(37.5010, 127.0010))
+            saveReadyRobot(name = "로봇-2", location = Location(37.5020, 127.0020))
+            val robot3 = saveReadyRobot(name = "로봇-3", location = Location(37.5005, 127.0005))
 
             val assignedRobot = assignmentService.assignNearestRobotToDelivery(delivery)
 
-            assertEquals(robot3.id, assignedRobot!!.id)
+            assertThat(assignedRobot!!.id).isEqualTo(robot3.id)
         }
 
         @Test
         @DisplayName("동일 거리의 로봇이 있으면 첫 번째 로봇이 선택된다")
         fun `동일 거리의 로봇이 있으면 첫 번째 로봇이 선택된다`() {
             val pickupLocation = Location(latitude = 37.5000, longitude = 127.0000)
-            val delivery = createDelivery(pickupLocation = pickupLocation)
+            val delivery = saveDelivery(pickupLocation = pickupLocation)
 
-            // 같은 위치의 로봇들
             val sameLocation = Location(latitude = 37.5010, longitude = 127.0010)
-            val robot1 = createRobot(id = 1L, name = "로봇-1", location = sameLocation)
-            val robot2 = createRobot(id = 2L, name = "로봇-2", location = sameLocation)
-
-            whenever(robotRepository.findAllByStatus(RobotStatus.READY)).thenReturn(listOf(robot1, robot2))
+            val robot1 = saveReadyRobot(name = "로봇-1", location = sameLocation)
+            saveReadyRobot(name = "로봇-2", location = sameLocation)
 
             val assignedRobot = assignmentService.assignNearestRobotToDelivery(delivery)
 
-            // 첫 번째로 추가된 로봇이 선택됨
-            assertEquals(robot1.id, assignedRobot!!.id)
+            assertThat(assignedRobot!!.id).isEqualTo(robot1.id)
         }
     }
 }

@@ -43,12 +43,12 @@ class Robot(
     )
     var location: Location,
     @Embedded
-    @AttributeOverride(name = "value", column = Column(name = "current_delivery_id"))
+    @AttributeOverride(name = "value", column = Column(name = "current_delivery_id", nullable = true))
     var currentDeliveryId: DeliveryId? = null,
     @Embedded
     @AttributeOverrides(
-        AttributeOverride(name = "latitude", column = Column(name = "destination_latitude")),
-        AttributeOverride(name = "longitude", column = Column(name = "destination_longitude")),
+        AttributeOverride(name = "latitude", column = Column(name = "destination_latitude", nullable = true)),
+        AttributeOverride(name = "longitude", column = Column(name = "destination_longitude", nullable = true)),
     )
     var destination: Location? = null,
 ) : BaseEntity<Robot>() {

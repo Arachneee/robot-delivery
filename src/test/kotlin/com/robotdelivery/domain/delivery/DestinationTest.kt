@@ -1,13 +1,11 @@
 package com.robotdelivery.domain.delivery
 
 import com.robotdelivery.domain.common.Location
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNotEquals
-import org.junit.jupiter.api.Assertions.assertNull
+import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 
 @DisplayName("Destination 테스트")
 class DestinationTest {
@@ -26,9 +24,9 @@ class DestinationTest {
                     location = validLocation,
                 )
 
-            assertEquals("서울시 중구 세종대로 110", destination.address)
-            assertEquals("시청역 1번 출구", destination.addressDetail)
-            assertEquals(validLocation, destination.location)
+            assertThat(destination.address).isEqualTo("서울시 중구 세종대로 110")
+            assertThat(destination.addressDetail).isEqualTo("시청역 1번 출구")
+            assertThat(destination.location).isEqualTo(validLocation)
         }
 
         @Test
@@ -40,34 +38,34 @@ class DestinationTest {
                     location = validLocation,
                 )
 
-            assertEquals("서울시 중구 세종대로 110", destination.address)
-            assertNull(destination.addressDetail)
+            assertThat(destination.address).isEqualTo("서울시 중구 세종대로 110")
+            assertThat(destination.addressDetail).isNull()
         }
 
         @Test
         @DisplayName("빈 주소로 Destination을 생성하면 예외가 발생한다")
         fun `빈 주소로 Destination을 생성하면 예외가 발생한다`() {
-            val exception =
-                assertThrows<IllegalArgumentException> {
-                    Destination(
-                        address = "",
-                        location = validLocation,
-                    )
-                }
-            assertEquals("주소는 비어있을 수 없습니다.", exception.message)
+            assertThatThrownBy {
+                Destination(
+                    address = "",
+                    location = validLocation,
+                )
+            }
+                .isInstanceOf(IllegalArgumentException::class.java)
+                .hasMessage("주소는 비어있을 수 없습니다.")
         }
 
         @Test
         @DisplayName("공백만 있는 주소로 Destination을 생성하면 예외가 발생한다")
         fun `공백만 있는 주소로 Destination을 생성하면 예외가 발생한다`() {
-            val exception =
-                assertThrows<IllegalArgumentException> {
-                    Destination(
-                        address = "   ",
-                        location = validLocation,
-                    )
-                }
-            assertEquals("주소는 비어있을 수 없습니다.", exception.message)
+            assertThatThrownBy {
+                Destination(
+                    address = "   ",
+                    location = validLocation,
+                )
+            }
+                .isInstanceOf(IllegalArgumentException::class.java)
+                .hasMessage("주소는 비어있을 수 없습니다.")
         }
     }
 
@@ -90,7 +88,7 @@ class DestinationTest {
                     location = validLocation,
                 )
 
-            assertEquals(destination1, destination2)
+            assertThat(destination1).isEqualTo(destination2)
         }
 
         @Test
@@ -107,7 +105,7 @@ class DestinationTest {
                     location = validLocation,
                 )
 
-            assertNotEquals(destination1, destination2)
+            assertThat(destination1).isNotEqualTo(destination2)
         }
     }
 }

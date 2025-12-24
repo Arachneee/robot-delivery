@@ -5,7 +5,7 @@ import java.util.EnumSet
 enum class DeliveryStatus(
     val destinationType: DestinationType?,
 ) {
-    PENDING(DestinationType.PICKUP),
+    PENDING(null),
     ASSIGNED(DestinationType.PICKUP),
     PICKUP_ARRIVED(DestinationType.PICKUP),
     PICKING_UP(DestinationType.PICKUP),

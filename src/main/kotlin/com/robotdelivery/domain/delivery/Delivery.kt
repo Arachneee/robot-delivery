@@ -59,7 +59,7 @@ class Delivery(
     @Column(nullable = false)
     var status: DeliveryStatus = DeliveryStatus.PENDING,
     @Embedded
-    @AttributeOverride(name = "value", column = Column(name = "assigned_robot_id"))
+    @AttributeOverride(name = "value", column = Column(name = "assigned_robot_id", nullable = true))
     var assignedRobotId: RobotId? = null,
 ) : BaseEntity<Delivery>() {
     @Transient
