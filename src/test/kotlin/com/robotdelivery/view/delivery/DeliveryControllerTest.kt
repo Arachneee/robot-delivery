@@ -1,8 +1,7 @@
 package com.robotdelivery.view.delivery
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.robotdelivery.application.DeliveryService
+import com.robotdelivery.config.ControllerTestSupport
 import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.common.RobotId
 import com.robotdelivery.view.delivery.dto.CreateDeliveryRequest
@@ -13,8 +12,6 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.doNothing
 import org.mockito.kotlin.given
 import org.mockito.kotlin.whenever
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.restdocs.test.autoconfigure.AutoConfigureRestDocs
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.http.MediaType
 import org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document
@@ -29,27 +26,18 @@ import org.springframework.restdocs.payload.PayloadDocumentation.responseFields
 import org.springframework.restdocs.request.RequestDocumentation.parameterWithName
 import org.springframework.restdocs.request.RequestDocumentation.pathParameters
 import org.springframework.test.context.bean.override.mockito.MockitoBean
-import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
-@WebMvcTest(DeliveryController::class)
-@AutoConfigureRestDocs
 @DisplayName("DeliveryController 테스트")
-class DeliveryControllerTest {
-    @Autowired
-    private lateinit var mockMvc: MockMvc
-
-    private val objectMapper: ObjectMapper = jacksonObjectMapper()
-
+class DeliveryControllerTest : ControllerTestSupport() {
     @MockitoBean
     private lateinit var deliveryService: DeliveryService
 
     @Test
     @DisplayName("배달 생성 API - 성공")
     fun `배달 생성 API 성공`() {
-        // given
         val request =
             CreateDeliveryRequest(
                 pickupAddress = "서울시 중구 세종대로 110",
@@ -66,7 +54,6 @@ class DeliveryControllerTest {
         val deliveryId = DeliveryId(1L)
         given(deliveryService.createDelivery(any())).willReturn(deliveryId)
 
-        // when & then
         mockMvc
             .perform(
                 post("/api/deliveries")
@@ -127,7 +114,6 @@ class DeliveryControllerTest {
     @Test
     @DisplayName("배달 생성 API - 상세 주소 없이 생성")
     fun `배달 생성 API 상세 주소 없이 성공`() {
-        // given
         val request =
             CreateDeliveryRequest(
                 pickupAddress = "서울시 중구 세종대로 110",
@@ -144,7 +130,6 @@ class DeliveryControllerTest {
         val deliveryId = DeliveryId(2L)
         given(deliveryService.createDelivery(any())).willReturn(deliveryId)
 
-        // when & then
         mockMvc
             .perform(
                 post("/api/deliveries")
@@ -159,11 +144,9 @@ class DeliveryControllerTest {
     @Test
     @DisplayName("배달 완료 API - 성공")
     fun `배달 완료 API 성공`() {
-        // given
         val deliveryId = 1L
         doNothing().whenever(deliveryService).completeDelivery(DeliveryId(deliveryId))
 
-        // when & then
         mockMvc
             .perform(
                 post("/api/deliveries/{deliveryId}/complete", deliveryId),
@@ -193,11 +176,9 @@ class DeliveryControllerTest {
     @Test
     @DisplayName("배송 시작 API - 성공")
     fun `배송 시작 API 성공`() {
-        // given
         val deliveryId = 1L
         doNothing().whenever(deliveryService).startDelivery(DeliveryId(deliveryId))
 
-        // when & then
         mockMvc
             .perform(
                 post("/api/deliveries/{deliveryId}/start", deliveryId),
@@ -227,11 +208,9 @@ class DeliveryControllerTest {
     @Test
     @DisplayName("회수 완료 API - 성공")
     fun `회수 완료 API 성공`() {
-        // given
         val deliveryId = 1L
         doNothing().whenever(deliveryService).completeReturn(DeliveryId(deliveryId))
 
-        // when & then
         mockMvc
             .perform(
                 post("/api/deliveries/{deliveryId}/complete-return", deliveryId),
@@ -261,11 +240,9 @@ class DeliveryControllerTest {
     @Test
     @DisplayName("배달 취소 API - 단순 취소 성공")
     fun `배달 취소 API 단순 취소 성공`() {
-        // given
         val deliveryId = 1L
         whenever(deliveryService.cancelDelivery(DeliveryId(deliveryId))).thenReturn(false)
 
-        // when & then
         mockMvc
             .perform(
                 post("/api/deliveries/{deliveryId}/cancel", deliveryId),
@@ -299,11 +276,9 @@ class DeliveryControllerTest {
     @Test
     @DisplayName("배달 취소 API - 회수가 필요한 취소 성공")
     fun `배달 취소 API 회수가 필요한 취소 성공`() {
-        // given
         val deliveryId = 1L
         whenever(deliveryService.cancelDelivery(DeliveryId(deliveryId))).thenReturn(true)
 
-        // when & then
         mockMvc
             .perform(
                 post("/api/deliveries/{deliveryId}/cancel", deliveryId),
@@ -337,11 +312,9 @@ class DeliveryControllerTest {
     @Test
     @DisplayName("배차 취소 API - 성공")
     fun `배차 취소 API 성공`() {
-        // given
         val deliveryId = 1L
         doNothing().whenever(deliveryService).unassignRobot(DeliveryId(deliveryId))
 
-        // when & then
         mockMvc
             .perform(
                 post("/api/deliveries/{deliveryId}/unassign-robot", deliveryId),
@@ -371,7 +344,6 @@ class DeliveryControllerTest {
     @Test
     @DisplayName("배차 변경 API - 성공")
     fun `배차 변경 API 성공`() {
-        // given
         val deliveryId = 1L
         val previousRobotId = 1L
         val newRobotId = 2L
@@ -380,7 +352,6 @@ class DeliveryControllerTest {
         whenever(deliveryService.reassignRobot(DeliveryId(deliveryId), RobotId(newRobotId)))
             .thenReturn(RobotId(previousRobotId))
 
-        // when & then
         mockMvc
             .perform(
                 post("/api/deliveries/{deliveryId}/reassign-robot", deliveryId)
@@ -426,7 +397,6 @@ class DeliveryControllerTest {
     @Test
     @DisplayName("배차 API - 로봇이 없는 상태에서 신규 배차 성공")
     fun `배차 API 신규 배차 성공`() {
-        // given
         val deliveryId = 1L
         val newRobotId = 2L
         val request = ReassignRobotRequest(newRobotId = newRobotId)
@@ -434,7 +404,6 @@ class DeliveryControllerTest {
         whenever(deliveryService.reassignRobot(DeliveryId(deliveryId), RobotId(newRobotId)))
             .thenReturn(null)
 
-        // when & then
         mockMvc
             .perform(
                 post("/api/deliveries/{deliveryId}/reassign-robot", deliveryId)

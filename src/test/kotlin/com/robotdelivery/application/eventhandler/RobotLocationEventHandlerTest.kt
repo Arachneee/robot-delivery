@@ -1,5 +1,6 @@
 package com.robotdelivery.application.eventhandler
 
+import com.robotdelivery.config.IntegrationTestSupport
 import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.common.RobotId
 import com.robotdelivery.domain.robot.Robot
@@ -11,19 +12,10 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import com.robotdelivery.config.TestAsyncConfig
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.context.annotation.Import
-import org.springframework.test.context.ActiveProfiles
-import org.springframework.transaction.annotation.Transactional
 
-@SpringBootTest
-@Import(TestAsyncConfig::class)
-@ActiveProfiles("test")
-@Transactional
 @DisplayName("RobotLocationEventHandler 테스트")
-class RobotLocationEventHandlerTest {
+class RobotLocationEventHandlerTest : IntegrationTestSupport() {
     @Autowired
     private lateinit var robotRepository: RobotRepository
 

@@ -3,6 +3,7 @@ package com.robotdelivery.application
 import com.robotdelivery.application.client.RobotClient
 import com.robotdelivery.application.command.CreateDeliveryCommand
 import com.robotdelivery.application.command.DestinationInfo
+import com.robotdelivery.config.IntegrationTestSupport
 import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.delivery.Delivery
@@ -20,16 +21,10 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.verify
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.bean.override.mockito.MockitoBean
-import org.springframework.transaction.annotation.Transactional
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
-@ActiveProfiles("test")
-@Transactional
 @DisplayName("DeliveryService 테스트")
-class DeliveryServiceTest {
+class DeliveryServiceTest : IntegrationTestSupport() {
     @Autowired
     private lateinit var deliveryRepository: DeliveryRepository
 

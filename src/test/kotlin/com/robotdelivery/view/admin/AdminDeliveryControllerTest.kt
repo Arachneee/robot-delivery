@@ -2,13 +2,12 @@ package com.robotdelivery.view.admin
 
 import com.robotdelivery.application.DeliveryService
 import com.robotdelivery.application.command.ChangeStatusResult
+import com.robotdelivery.config.ControllerTestSupport
 import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.delivery.DeliveryStatus
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.whenever
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.restdocs.test.autoconfigure.AutoConfigureRestDocs
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document
 import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post
@@ -22,17 +21,11 @@ import org.springframework.restdocs.request.RequestDocumentation.parameterWithNa
 import org.springframework.restdocs.request.RequestDocumentation.pathParameters
 import org.springframework.restdocs.request.RequestDocumentation.queryParameters
 import org.springframework.test.context.bean.override.mockito.MockitoBean
-import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
-@WebMvcTest(AdminDeliveryController::class)
-@AutoConfigureRestDocs
 @DisplayName("AdminDeliveryController 테스트")
-class AdminDeliveryControllerTest {
-    @Autowired
-    private lateinit var mockMvc: MockMvc
-
+class AdminDeliveryControllerTest : ControllerTestSupport() {
     @MockitoBean
     private lateinit var deliveryService: DeliveryService
 
@@ -40,10 +33,11 @@ class AdminDeliveryControllerTest {
     @DisplayName("상태 변경 API - PENDING에서 CANCELED로 변경 성공")
     fun `상태 변경 API PENDING에서 CANCELED로 변경 성공`() {
         val deliveryId = 1L
-        val result = ChangeStatusResult(
-            previousStatus = DeliveryStatus.PENDING,
-            currentStatus = DeliveryStatus.CANCELED,
-        )
+        val result =
+            ChangeStatusResult(
+                previousStatus = DeliveryStatus.PENDING,
+                currentStatus = DeliveryStatus.CANCELED,
+            )
 
         whenever(
             deliveryService.changeStatus(
@@ -61,8 +55,7 @@ class AdminDeliveryControllerTest {
             .andExpect(jsonPath("$.currentStatus").value("CANCELED"))
             .andExpect(
                 jsonPath("$.message").value("상태가 PENDING에서 CANCELED(으)로 변경되었습니다."),
-            )
-            .andDo(
+            ).andDo(
                 document(
                     "admin-delivery-change-status",
                     preprocessRequest(prettyPrint()),
@@ -95,10 +88,11 @@ class AdminDeliveryControllerTest {
     @DisplayName("상태 변경 API - ASSIGNED에서 PICKUP_ARRIVED로 변경 성공")
     fun `상태 변경 API ASSIGNED에서 PICKUP_ARRIVED로 변경 성공`() {
         val deliveryId = 2L
-        val result = ChangeStatusResult(
-            previousStatus = DeliveryStatus.ASSIGNED,
-            currentStatus = DeliveryStatus.PICKUP_ARRIVED,
-        )
+        val result =
+            ChangeStatusResult(
+                previousStatus = DeliveryStatus.ASSIGNED,
+                currentStatus = DeliveryStatus.PICKUP_ARRIVED,
+            )
 
         whenever(
             deliveryService.changeStatus(
@@ -121,10 +115,11 @@ class AdminDeliveryControllerTest {
     @DisplayName("상태 변경 API - PICKING_UP에서 DELIVERING으로 변경 성공")
     fun `상태 변경 API PICKING_UP에서 DELIVERING으로 변경 성공`() {
         val deliveryId = 3L
-        val result = ChangeStatusResult(
-            previousStatus = DeliveryStatus.PICKING_UP,
-            currentStatus = DeliveryStatus.DELIVERING,
-        )
+        val result =
+            ChangeStatusResult(
+                previousStatus = DeliveryStatus.PICKING_UP,
+                currentStatus = DeliveryStatus.DELIVERING,
+            )
 
         whenever(
             deliveryService.changeStatus(
@@ -147,10 +142,11 @@ class AdminDeliveryControllerTest {
     @DisplayName("상태 변경 API - DROPPING_OFF에서 COMPLETED로 변경 성공")
     fun `상태 변경 API DROPPING_OFF에서 COMPLETED로 변경 성공`() {
         val deliveryId = 4L
-        val result = ChangeStatusResult(
-            previousStatus = DeliveryStatus.DROPPING_OFF,
-            currentStatus = DeliveryStatus.COMPLETED,
-        )
+        val result =
+            ChangeStatusResult(
+                previousStatus = DeliveryStatus.DROPPING_OFF,
+                currentStatus = DeliveryStatus.COMPLETED,
+            )
 
         whenever(
             deliveryService.changeStatus(
@@ -173,10 +169,11 @@ class AdminDeliveryControllerTest {
     @DisplayName("상태 변경 API - DELIVERING에서 RETURNING으로 변경 성공")
     fun `상태 변경 API DELIVERING에서 RETURNING으로 변경 성공`() {
         val deliveryId = 5L
-        val result = ChangeStatusResult(
-            previousStatus = DeliveryStatus.DELIVERING,
-            currentStatus = DeliveryStatus.RETURNING,
-        )
+        val result =
+            ChangeStatusResult(
+                previousStatus = DeliveryStatus.DELIVERING,
+                currentStatus = DeliveryStatus.RETURNING,
+            )
 
         whenever(
             deliveryService.changeStatus(
@@ -199,10 +196,11 @@ class AdminDeliveryControllerTest {
     @DisplayName("상태 변경 API - RETURNING_OFF에서 RETURN_COMPLETED로 변경 성공")
     fun `상태 변경 API RETURNING_OFF에서 RETURN_COMPLETED로 변경 성공`() {
         val deliveryId = 6L
-        val result = ChangeStatusResult(
-            previousStatus = DeliveryStatus.RETURNING_OFF,
-            currentStatus = DeliveryStatus.RETURN_COMPLETED,
-        )
+        val result =
+            ChangeStatusResult(
+                previousStatus = DeliveryStatus.RETURNING_OFF,
+                currentStatus = DeliveryStatus.RETURN_COMPLETED,
+            )
 
         whenever(
             deliveryService.changeStatus(
@@ -221,4 +219,3 @@ class AdminDeliveryControllerTest {
             .andExpect(jsonPath("$.currentStatus").value("RETURN_COMPLETED"))
     }
 }
-

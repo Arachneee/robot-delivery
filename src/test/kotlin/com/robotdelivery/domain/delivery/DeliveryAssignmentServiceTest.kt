@@ -1,6 +1,6 @@
 package com.robotdelivery.domain.delivery
 
-import com.robotdelivery.config.TestAsyncConfig
+import com.robotdelivery.config.IntegrationTestSupport
 import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.robot.Robot
 import com.robotdelivery.domain.robot.RobotRepository
@@ -11,17 +11,9 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.context.annotation.Import
-import org.springframework.test.context.ActiveProfiles
-import org.springframework.transaction.annotation.Transactional
 
-@SpringBootTest
-@Import(TestAsyncConfig::class)
-@ActiveProfiles("test")
-@Transactional
 @DisplayName("DeliveryAssignmentService 테스트")
-class DeliveryAssignmentServiceTest {
+class DeliveryAssignmentServiceTest : IntegrationTestSupport() {
     @Autowired
     private lateinit var robotRepository: RobotRepository
 
