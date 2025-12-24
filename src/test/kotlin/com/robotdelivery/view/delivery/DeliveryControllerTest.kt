@@ -10,7 +10,6 @@ import com.robotdelivery.view.delivery.dto.ReassignRobotRequest
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
-import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.doNothing
 import org.mockito.kotlin.given
 import org.mockito.kotlin.whenever
@@ -59,19 +58,7 @@ class DeliveryControllerTest {
             )
 
         val deliveryId = DeliveryId(1L)
-        given(
-            deliveryService.createDelivery(
-                pickupAddress = any(),
-                pickupAddressDetail = anyOrNull(),
-                pickupLatitude = any(),
-                pickupLongitude = any(),
-                deliveryAddress = any(),
-                deliveryAddressDetail = anyOrNull(),
-                deliveryLatitude = any(),
-                deliveryLongitude = any(),
-                phoneNumber = any(),
-            ),
-        ).willReturn(deliveryId)
+        given(deliveryService.createDelivery(any())).willReturn(deliveryId)
 
         // when & then
         mockMvc
@@ -149,19 +136,7 @@ class DeliveryControllerTest {
             )
 
         val deliveryId = DeliveryId(2L)
-        given(
-            deliveryService.createDelivery(
-                pickupAddress = any(),
-                pickupAddressDetail = anyOrNull(),
-                pickupLatitude = any(),
-                pickupLongitude = any(),
-                deliveryAddress = any(),
-                deliveryAddressDetail = anyOrNull(),
-                deliveryLatitude = any(),
-                deliveryLongitude = any(),
-                phoneNumber = any(),
-            ),
-        ).willReturn(deliveryId)
+        given(deliveryService.createDelivery(any())).willReturn(deliveryId)
 
         // when & then
         mockMvc

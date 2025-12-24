@@ -1,6 +1,8 @@
 package com.robotdelivery.application
 
 import com.robotdelivery.application.client.RobotClient
+import com.robotdelivery.application.command.CreateDeliveryCommand
+import com.robotdelivery.application.command.DestinationInfo
 import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.common.RobotId
@@ -56,18 +58,8 @@ class DeliveryServiceTest {
             val savedDelivery = createDelivery(1L)
             whenever(deliveryRepository.saveAndFlush(any<Delivery>())).thenReturn(savedDelivery)
 
-            val deliveryId =
-                deliveryService.createDelivery(
-                    pickupAddress = "서울시 중구 세종대로 110",
-                    pickupAddressDetail = "시청역 1번 출구",
-                    pickupLatitude = 37.5665,
-                    pickupLongitude = 126.9780,
-                    deliveryAddress = "서울시 강남구 테헤란로 1",
-                    deliveryAddressDetail = "2층",
-                    deliveryLatitude = 37.4979,
-                    deliveryLongitude = 127.0276,
-                    phoneNumber = "010-1234-5678",
-                )
+            val command = createDeliveryCommand()
+            val deliveryId = deliveryService.createDelivery(command)
 
             assertNotNull(deliveryId)
             assertEquals(DeliveryId(1L), deliveryId)
@@ -80,17 +72,8 @@ class DeliveryServiceTest {
             val savedDelivery = createDelivery(1L)
             whenever(deliveryRepository.saveAndFlush(any<Delivery>())).thenReturn(savedDelivery)
 
-            deliveryService.createDelivery(
-                pickupAddress = "서울시 중구 세종대로 110",
-                pickupAddressDetail = "시청역 1번 출구",
-                pickupLatitude = 37.5665,
-                pickupLongitude = 126.9780,
-                deliveryAddress = "서울시 강남구 테헤란로 1",
-                deliveryAddressDetail = "2층",
-                deliveryLatitude = 37.4979,
-                deliveryLongitude = 127.0276,
-                phoneNumber = "010-1234-5678",
-            )
+            val command = createDeliveryCommand()
+            deliveryService.createDelivery(command)
 
             verify(deliveryRepository).saveAndFlush(deliveryCaptor.capture())
             assertEquals(DeliveryStatus.PENDING, deliveryCaptor.firstValue.status)
@@ -103,17 +86,8 @@ class DeliveryServiceTest {
             val savedDelivery = createDelivery(1L)
             whenever(deliveryRepository.saveAndFlush(any<Delivery>())).thenReturn(savedDelivery)
 
-            deliveryService.createDelivery(
-                pickupAddress = "서울시 중구 세종대로 110",
-                pickupAddressDetail = "시청역 1번 출구",
-                pickupLatitude = 37.5665,
-                pickupLongitude = 126.9780,
-                deliveryAddress = "서울시 강남구 테헤란로 1",
-                deliveryAddressDetail = "2층",
-                deliveryLatitude = 37.4979,
-                deliveryLongitude = 127.0276,
-                phoneNumber = "010-1234-5678",
-            )
+            val command = createDeliveryCommand()
+            deliveryService.createDelivery(command)
 
             verify(deliveryRepository).saveAndFlush(deliveryCaptor.capture())
             val capturedDelivery = deliveryCaptor.firstValue
@@ -130,17 +104,8 @@ class DeliveryServiceTest {
             val savedDelivery = createDelivery(1L)
             whenever(deliveryRepository.saveAndFlush(any<Delivery>())).thenReturn(savedDelivery)
 
-            deliveryService.createDelivery(
-                pickupAddress = "서울시 중구 세종대로 110",
-                pickupAddressDetail = "시청역 1번 출구",
-                pickupLatitude = 37.5665,
-                pickupLongitude = 126.9780,
-                deliveryAddress = "서울시 강남구 테헤란로 1",
-                deliveryAddressDetail = "2층",
-                deliveryLatitude = 37.4979,
-                deliveryLongitude = 127.0276,
-                phoneNumber = "010-1234-5678",
-            )
+            val command = createDeliveryCommand()
+            deliveryService.createDelivery(command)
 
             verify(deliveryRepository).saveAndFlush(deliveryCaptor.capture())
             val capturedDelivery = deliveryCaptor.firstValue
@@ -157,17 +122,8 @@ class DeliveryServiceTest {
             val savedDelivery = createDelivery(1L)
             whenever(deliveryRepository.saveAndFlush(any<Delivery>())).thenReturn(savedDelivery)
 
-            deliveryService.createDelivery(
-                pickupAddress = "서울시 중구 세종대로 110",
-                pickupAddressDetail = null,
-                pickupLatitude = 37.5665,
-                pickupLongitude = 126.9780,
-                deliveryAddress = "서울시 강남구 테헤란로 1",
-                deliveryAddressDetail = null,
-                deliveryLatitude = 37.4979,
-                deliveryLongitude = 127.0276,
-                phoneNumber = "010-9999-8888",
-            )
+            val command = createDeliveryCommand(phoneNumber = "010-9999-8888")
+            deliveryService.createDelivery(command)
 
             verify(deliveryRepository).saveAndFlush(deliveryCaptor.capture())
             assertEquals("010-9999-8888", deliveryCaptor.firstValue.phoneNumber)
@@ -180,17 +136,12 @@ class DeliveryServiceTest {
             val savedDelivery = createDelivery(1L)
             whenever(deliveryRepository.saveAndFlush(any<Delivery>())).thenReturn(savedDelivery)
 
-            deliveryService.createDelivery(
-                pickupAddress = "서울시 중구 세종대로 110",
-                pickupAddressDetail = null,
-                pickupLatitude = 37.5665,
-                pickupLongitude = 126.9780,
-                deliveryAddress = "서울시 강남구 테헤란로 1",
-                deliveryAddressDetail = null,
-                deliveryLatitude = 37.4979,
-                deliveryLongitude = 127.0276,
-                phoneNumber = "010-1234-5678",
-            )
+            val command =
+                createDeliveryCommand(
+                    pickupAddressDetail = null,
+                    deliveryAddressDetail = null,
+                )
+            deliveryService.createDelivery(command)
 
             verify(deliveryRepository).saveAndFlush(deliveryCaptor.capture())
             val capturedDelivery = deliveryCaptor.firstValue
@@ -749,6 +700,35 @@ class DeliveryServiceTest {
     }
 
     // Helper functions
+    private fun createDeliveryCommand(
+        pickupAddress: String = "서울시 중구 세종대로 110",
+        pickupAddressDetail: String? = "시청역 1번 출구",
+        pickupLatitude: Double = 37.5665,
+        pickupLongitude: Double = 126.9780,
+        deliveryAddress: String = "서울시 강남구 테헤란로 1",
+        deliveryAddressDetail: String? = "2층",
+        deliveryLatitude: Double = 37.4979,
+        deliveryLongitude: Double = 127.0276,
+        phoneNumber: String = "010-1234-5678",
+    ): CreateDeliveryCommand =
+        CreateDeliveryCommand(
+            pickupDestination =
+                DestinationInfo(
+                    address = pickupAddress,
+                    addressDetail = pickupAddressDetail,
+                    latitude = pickupLatitude,
+                    longitude = pickupLongitude,
+                ),
+            deliveryDestination =
+                DestinationInfo(
+                    address = deliveryAddress,
+                    addressDetail = deliveryAddressDetail,
+                    latitude = deliveryLatitude,
+                    longitude = deliveryLongitude,
+                ),
+            phoneNumber = phoneNumber,
+        )
+
     private fun createDelivery(id: Long): Delivery =
         Delivery(
             id = id,

@@ -56,11 +56,11 @@ class DeliveryTest {
         fun `새 배달이 persist되면 DeliveryCreatedEvent가 발생한다`() {
             val delivery =
                 Delivery(
-                    id = 0L, // 새로운 엔티티
+                    id = 1L,
                     pickupDestination = pickupDestination,
                     deliveryDestination = deliveryDestination,
                     phoneNumber = "010-1234-5678",
-                )
+                ).apply { isNew = true }
 
             // JPA @PostPersist 콜백 시뮬레이션
             delivery.onPostPersist()
@@ -75,11 +75,11 @@ class DeliveryTest {
         fun `onPostPersist는 한 번만 이벤트를 등록한다`() {
             val delivery =
                 Delivery(
-                    id = 0L,
+                    id = 1L,
                     pickupDestination = pickupDestination,
                     deliveryDestination = deliveryDestination,
                     phoneNumber = "010-1234-5678",
-                )
+                ).apply { isNew = true }
 
             delivery.onPostPersist()
             delivery.onPostPersist() // 두 번째 호출
