@@ -42,7 +42,7 @@ class Delivery(
     var assignedRobotId: RobotId? = null,
 ) : BaseEntity<Delivery>() {
     @Transient
-    private var isNew: Boolean = (id == 0L)
+    internal var isNew: Boolean = (id == 0L)
 
     @PostPersist
     fun onPostPersist() {
@@ -221,13 +221,7 @@ class Delivery(
         this.status = newStatus
     }
 
-    fun isActive(): Boolean =
-        status !in
-            listOf(
-                DeliveryStatus.COMPLETED,
-                DeliveryStatus.CANCELED,
-                DeliveryStatus.RETURN_COMPLETED,
-            )
+    fun isActive(): Boolean = !status.isTerminal()
 
     fun getCurrentDestination(): Destination? =
         when (status) {
@@ -238,7 +232,12 @@ class Delivery(
             DeliveryStatus.COMPLETED, DeliveryStatus.CANCELED, DeliveryStatus.RETURN_COMPLETED -> null
         }
 
-    fun getDeliveryId(): DeliveryId = DeliveryId(id)
+    fun getAssignedRobotIdOrThrow(): RobotId = assignedRobotId ?: throw IllegalStateException("배차된 로봇이 없습니다.")
+
+    fun getDeliveryId(): DeliveryId {
+        check(id > 0) { "아직 persist되지 않은 엔티티입니다." }
+        return DeliveryId(id)
+    }
 
     override fun toString(): String =
         "Delivery(id=$id, phoneNumber='$phoneNumber', status=$status, assignedRobotId=$assignedRobotId, isNew=$isNew)"
