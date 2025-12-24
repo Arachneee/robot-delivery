@@ -4,7 +4,6 @@ import com.robotdelivery.domain.common.BaseEntity
 import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.common.RobotId
-import com.robotdelivery.domain.robot.event.RobotArrivedAtDestinationEvent
 import com.robotdelivery.domain.robot.event.RobotBecameAvailableEvent
 import com.robotdelivery.domain.robot.event.RobotDestinationChangedEvent
 import jakarta.persistence.AttributeOverride
@@ -32,6 +31,9 @@ class Robot(
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     var status: RobotStatus = RobotStatus.READY,
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    var drivingStatus: RobotDrivingStatus = RobotDrivingStatus.ARRIVED,
     @Column(nullable = false)
     var battery: Int = 100,
     @Embedded
@@ -116,6 +118,7 @@ class Robot(
             "배달 수행 중이 아닙니다. 현재 상태: $status"
         }
         this.destination = newDestination
+        this.drivingStatus = RobotDrivingStatus.ON_GOING
 
         registerEvent(RobotDestinationChangedEvent(robotId = getRobotId(), destination = newDestination))
     }
@@ -129,10 +132,12 @@ class Robot(
 
     fun updateLocation(newLocation: Location) {
         this.location = newLocation
+        val dest = destination ?: return
+        val distanceTo = location.distanceTo(dest)
 
-        if (destination != null && location.distanceTo(destination!!) <= ARRIVAL_THRESHOLD_METERS) {
-            registerEvent(RobotArrivedAtDestinationEvent(robotId = getRobotId(), destination = destination!!))
-            this.destination = null
+        while (drivingStatus.isAbleToNextStatus(distanceTo)) {
+            drivingStatus = drivingStatus.nextStatus!!
+            drivingStatus.createEvent(robotId = getRobotId(), destination = dest)?.let { registerEvent(it) }
         }
     }
 
@@ -149,7 +154,6 @@ class Robot(
 
     companion object {
         private val log = LoggerFactory.getLogger(javaClass)
-        private const val ARRIVAL_THRESHOLD_METERS = 5.0
     }
 
     override fun toString(): String =

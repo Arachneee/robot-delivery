@@ -15,7 +15,12 @@ class RobotBecameAvailableEvent(
     val location: Location,
 ) : RobotEvent()
 
-class RobotArrivedAtDestinationEvent(
+class RobotArrivedEvent(
+    val robotId: RobotId,
+    val destination: Location,
+) : RobotEvent()
+
+class RobotApproachingEvent(
     val robotId: RobotId,
     val destination: Location,
 ) : RobotEvent()
