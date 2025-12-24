@@ -40,8 +40,6 @@ class Robot(
     )
     var destination: Location? = null,
 ) : BaseEntity<Robot>() {
-    fun getRobotId(): RobotId = RobotId(id)
-
     fun startDuty() {
         check(status.canTransitionTo(RobotStatus.READY)) {
             "출근할 수 없는 상태입니다. 현재 상태: $status"
@@ -103,6 +101,15 @@ class Robot(
         registerEvent(RobotBecameAvailableEvent(robotId = getRobotId(), location = location))
     }
 
+    fun navigateTo(newDestination: Location) {
+        check(status == RobotStatus.BUSY) {
+            "배달 수행 중이 아닙니다. 현재 상태: $status"
+        }
+        this.destination = newDestination
+
+        registerEvent(RobotDestinationChangedEvent(robotId = getRobotId(), destination = newDestination))
+    }
+
     fun updateBattery(newBattery: Int) {
         require(newBattery in 0..100) {
             "배터리는 0에서 100 사이여야 합니다."
@@ -119,16 +126,9 @@ class Robot(
         }
     }
 
-    fun navigateTo(newDestination: Location) {
-        check(status == RobotStatus.BUSY) {
-            "배달 수행 중이 아닙니다. 현재 상태: $status"
-        }
-        this.destination = newDestination
-
-        registerEvent(RobotDestinationChangedEvent(robotId = getRobotId(), destination = newDestination))
-    }
-
     fun isAvailable(): Boolean = status.isAvailableForDelivery() && currentDeliveryId == null && battery >= 20
+
+    fun getRobotId(): RobotId = RobotId(id)
 
     private fun transitionTo(newStatus: RobotStatus) {
         check(status.canTransitionTo(newStatus)) {
