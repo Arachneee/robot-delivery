@@ -1,2 +1,7 @@
-package com.robotdelivery.domain.delivery 
+package com.robotdelivery.domain.delivery
 
+enum class DestinationType {
+    PICKUP,
+    DELIVERY,
+    RETURN,
+}
