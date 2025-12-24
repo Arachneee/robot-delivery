@@ -1,5 +1,7 @@
 package com.robotdelivery.domain.delivery
 
+import java.util.*
+
 enum class DeliveryStatus {
     PENDING,
     ASSIGNED,
@@ -33,11 +35,30 @@ enum class DeliveryStatus {
             RETURN_COMPLETED -> false
         }
 
-    fun requiresReturn(): Boolean = this in listOf(PICKING_UP, DELIVERING, DELIVERY_ARRIVED, DROPPING_OFF)
+    fun requiresReturn(): Boolean = this in REQUIRES_RETURN_STATUSES
 
-    fun isCancelable(): Boolean = this in listOf(PENDING, ASSIGNED, PICKUP_ARRIVED)
+    fun isCancelable(): Boolean = this in CANCELABLE_STATUSES
 
-    fun isUnassignable(): Boolean = this in listOf(DeliveryStatus.ASSIGNED, DeliveryStatus.PICKUP_ARRIVED, DeliveryStatus.PICKING_UP)
+    fun isUnassignable(): Boolean = this in UNASSIGNABLE_STATUSES
 
-    fun isReassignable(): Boolean = this in listOf(ASSIGNED, PICKUP_ARRIVED, PICKING_UP, DELIVERING, DELIVERY_ARRIVED, DROPPING_OFF)
+    fun isReassignable(): Boolean = this in REASSIGNABLE_STATUSES
+
+    fun isTerminal(): Boolean = this in TERMINAL_STATUSES
+
+    companion object {
+        private val REQUIRES_RETURN_STATUSES: Set<DeliveryStatus> =
+            EnumSet.of(PICKING_UP, DELIVERING, DELIVERY_ARRIVED, DROPPING_OFF)
+
+        private val CANCELABLE_STATUSES: Set<DeliveryStatus> =
+            EnumSet.of(PENDING, ASSIGNED, PICKUP_ARRIVED)
+
+        private val UNASSIGNABLE_STATUSES: Set<DeliveryStatus> =
+            EnumSet.of(ASSIGNED, PICKUP_ARRIVED, PICKING_UP)
+
+        private val REASSIGNABLE_STATUSES: Set<DeliveryStatus> =
+            EnumSet.of(ASSIGNED, PICKUP_ARRIVED, PICKING_UP, DELIVERING, DELIVERY_ARRIVED, DROPPING_OFF)
+
+        private val TERMINAL_STATUSES: Set<DeliveryStatus> =
+            EnumSet.of(COMPLETED, CANCELED, RETURN_COMPLETED)
+    }
 }
