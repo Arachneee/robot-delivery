@@ -1,6 +1,6 @@
 package com.robotdelivery.domain.delivery
 
-import java.util.*
+import java.util.EnumSet
 
 enum class DeliveryStatus {
     PENDING,

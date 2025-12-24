@@ -1,6 +1,8 @@
 package com.robotdelivery.domain.common
 
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertDoesNotThrow
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -23,36 +25,40 @@ class LocationTest {
         @Test
         @DisplayName("위도가 -90보다 작으면 예외가 발생한다")
         fun `위도가 -90보다 작으면 예외가 발생한다`() {
-            val exception = assertThrows<IllegalArgumentException> {
-                Location(latitude = -91.0, longitude = 0.0)
-            }
+            val exception =
+                assertThrows<IllegalArgumentException> {
+                    Location(latitude = -91.0, longitude = 0.0)
+                }
             assertEquals("위도는 -90에서 90 사이여야 합니다.", exception.message)
         }
 
         @Test
         @DisplayName("위도가 90보다 크면 예외가 발생한다")
         fun `위도가 90보다 크면 예외가 발생한다`() {
-            val exception = assertThrows<IllegalArgumentException> {
-                Location(latitude = 91.0, longitude = 0.0)
-            }
+            val exception =
+                assertThrows<IllegalArgumentException> {
+                    Location(latitude = 91.0, longitude = 0.0)
+                }
             assertEquals("위도는 -90에서 90 사이여야 합니다.", exception.message)
         }
 
         @Test
         @DisplayName("경도가 -180보다 작으면 예외가 발생한다")
         fun `경도가 -180보다 작으면 예외가 발생한다`() {
-            val exception = assertThrows<IllegalArgumentException> {
-                Location(latitude = 0.0, longitude = -181.0)
-            }
+            val exception =
+                assertThrows<IllegalArgumentException> {
+                    Location(latitude = 0.0, longitude = -181.0)
+                }
             assertEquals("경도는 -180에서 180 사이여야 합니다.", exception.message)
         }
 
         @Test
         @DisplayName("경도가 180보다 크면 예외가 발생한다")
         fun `경도가 180보다 크면 예외가 발생한다`() {
-            val exception = assertThrows<IllegalArgumentException> {
-                Location(latitude = 0.0, longitude = 181.0)
-            }
+            val exception =
+                assertThrows<IllegalArgumentException> {
+                    Location(latitude = 0.0, longitude = 181.0)
+                }
             assertEquals("경도는 -180에서 180 사이여야 합니다.", exception.message)
         }
 
@@ -82,9 +88,9 @@ class LocationTest {
         fun `서울시청과 강남역 간의 거리를 계산할 수 있다`() {
             val seoulCityHall = Location(latitude = 37.5665, longitude = 126.9780)
             val gangnamStation = Location(latitude = 37.4979, longitude = 127.0276)
-            
+
             val distance = seoulCityHall.distanceTo(gangnamStation)
-            
+
             // 약 9km 정도 거리
             assertTrue(distance > 8000 && distance < 10000)
         }
@@ -114,4 +120,3 @@ class LocationTest {
         }
     }
 }
-
