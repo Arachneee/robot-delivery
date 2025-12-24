@@ -1,5 +1,8 @@
 package com.robotdelivery.view.delivery.dto
 
+import com.robotdelivery.application.command.CreateDeliveryCommand
+import com.robotdelivery.application.command.DestinationInfo
+
 data class CreateDeliveryRequest(
     val pickupAddress: String,
     val pickupAddressDetail: String?,
@@ -10,4 +13,23 @@ data class CreateDeliveryRequest(
     val deliveryLatitude: Double,
     val deliveryLongitude: Double,
     val phoneNumber: String,
-)
+) {
+    fun toCommand(): CreateDeliveryCommand =
+        CreateDeliveryCommand(
+            pickupDestination =
+                DestinationInfo(
+                    address = pickupAddress,
+                    addressDetail = pickupAddressDetail,
+                    latitude = pickupLatitude,
+                    longitude = pickupLongitude,
+                ),
+            deliveryDestination =
+                DestinationInfo(
+                    address = deliveryAddress,
+                    addressDetail = deliveryAddressDetail,
+                    latitude = deliveryLatitude,
+                    longitude = deliveryLongitude,
+                ),
+            phoneNumber = phoneNumber,
+        )
+}

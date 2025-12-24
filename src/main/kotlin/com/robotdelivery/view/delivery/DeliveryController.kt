@@ -17,24 +17,9 @@ class DeliveryController(
     fun createDelivery(
         @RequestBody request: CreateDeliveryRequest,
     ): ResponseEntity<CreateDeliveryResponse> {
-        val deliveryId =
-            deliveryService.createDelivery(
-                pickupAddress = request.pickupAddress,
-                pickupAddressDetail = request.pickupAddressDetail,
-                pickupLatitude = request.pickupLatitude,
-                pickupLongitude = request.pickupLongitude,
-                deliveryAddress = request.deliveryAddress,
-                deliveryAddressDetail = request.deliveryAddressDetail,
-                deliveryLatitude = request.deliveryLatitude,
-                deliveryLongitude = request.deliveryLongitude,
-                phoneNumber = request.phoneNumber,
-            )
+        val deliveryId = deliveryService.createDelivery(request.toCommand())
 
-        val response =
-            CreateDeliveryResponse(
-                deliveryId = deliveryId.value,
-                message = "배달이 성공적으로 생성되었습니다.",
-            )
+        val response = CreateDeliveryResponse(deliveryId = deliveryId.value)
 
         return ResponseEntity
             .created(URI.create("/api/deliveries/${deliveryId.value}"))
@@ -46,14 +31,7 @@ class DeliveryController(
         @PathVariable deliveryId: Long,
     ): ResponseEntity<StartDeliveryResponse> {
         deliveryService.startDelivery(DeliveryId(deliveryId))
-
-        val response =
-            StartDeliveryResponse(
-                deliveryId = deliveryId,
-                message = "배송이 시작되었습니다.",
-            )
-
-        return ResponseEntity.ok(response)
+        return ResponseEntity.ok(StartDeliveryResponse(deliveryId = deliveryId))
     }
 
     @PostMapping("/{deliveryId}/complete")
@@ -61,14 +39,7 @@ class DeliveryController(
         @PathVariable deliveryId: Long,
     ): ResponseEntity<CompleteDeliveryResponse> {
         deliveryService.completeDelivery(DeliveryId(deliveryId))
-
-        val response =
-            CompleteDeliveryResponse(
-                deliveryId = deliveryId,
-                message = "배달이 완료되었습니다.",
-            )
-
-        return ResponseEntity.ok(response)
+        return ResponseEntity.ok(CompleteDeliveryResponse(deliveryId = deliveryId))
     }
 
     @PostMapping("/{deliveryId}/complete-return")
@@ -76,14 +47,7 @@ class DeliveryController(
         @PathVariable deliveryId: Long,
     ): ResponseEntity<CompleteReturnResponse> {
         deliveryService.completeReturn(DeliveryId(deliveryId))
-
-        val response =
-            CompleteReturnResponse(
-                deliveryId = deliveryId,
-                message = "회수가 완료되었습니다.",
-            )
-
-        return ResponseEntity.ok(response)
+        return ResponseEntity.ok(CompleteReturnResponse(deliveryId = deliveryId))
     }
 
     @PostMapping("/{deliveryId}/open-door")
@@ -91,14 +55,7 @@ class DeliveryController(
         @PathVariable deliveryId: Long,
     ): ResponseEntity<OpenDoorResponse> {
         deliveryService.openDoor(DeliveryId(deliveryId))
-
-        val response =
-            OpenDoorResponse(
-                deliveryId = deliveryId,
-                message = "로봇 문이 열렸습니다.",
-            )
-
-        return ResponseEntity.ok(response)
+        return ResponseEntity.ok(OpenDoorResponse(deliveryId = deliveryId))
     }
 
     @PostMapping("/{deliveryId}/cancel")
@@ -106,22 +63,7 @@ class DeliveryController(
         @PathVariable deliveryId: Long,
     ): ResponseEntity<CancelDeliveryResponse> {
         val requiresReturn = deliveryService.cancelDelivery(DeliveryId(deliveryId))
-
-        val message =
-            if (requiresReturn) {
-                "배달이 취소되었습니다. 물품이 픽업 위치로 회수됩니다."
-            } else {
-                "배달이 취소되었습니다."
-            }
-
-        val response =
-            CancelDeliveryResponse(
-                deliveryId = deliveryId,
-                requiresReturn = requiresReturn,
-                message = message,
-            )
-
-        return ResponseEntity.ok(response)
+        return ResponseEntity.ok(CancelDeliveryResponse.of(deliveryId, requiresReturn))
     }
 
     @PostMapping("/{deliveryId}/unassign-robot")
@@ -129,14 +71,7 @@ class DeliveryController(
         @PathVariable deliveryId: Long,
     ): ResponseEntity<UnassignRobotResponse> {
         deliveryService.unassignRobot(DeliveryId(deliveryId))
-
-        val response =
-            UnassignRobotResponse(
-                deliveryId = deliveryId,
-                message = "배차가 취소되었습니다.",
-            )
-
-        return ResponseEntity.ok(response)
+        return ResponseEntity.ok(UnassignRobotResponse(deliveryId = deliveryId))
     }
 
     @PostMapping("/{deliveryId}/reassign-robot")
@@ -150,14 +85,12 @@ class DeliveryController(
                 RobotId(request.newRobotId),
             )
 
-        val response =
+        return ResponseEntity.ok(
             ReassignRobotResponse(
                 deliveryId = deliveryId,
                 previousRobotId = previousRobotId.value,
                 newRobotId = request.newRobotId,
-                message = "배차가 변경되었습니다.",
-            )
-
-        return ResponseEntity.ok(response)
+            ),
+        )
     }
 }
