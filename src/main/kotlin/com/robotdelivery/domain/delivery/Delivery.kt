@@ -5,6 +5,8 @@ package com.robotdelivery.domain.delivery
 import com.robotdelivery.domain.common.BaseEntity
 import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.delivery.event.DeliveryApproachingEvent
+import com.robotdelivery.domain.delivery.event.DeliveryArrivedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryCanceledEvent
 import com.robotdelivery.domain.delivery.event.DeliveryCompletedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryCreatedEvent
@@ -135,6 +137,21 @@ class Delivery(
         )
     }
 
+    fun approaching() {
+        val destinationType =
+            status.destinationType
+                ?: throw IllegalStateException("접근 알림을 보낼 수 없는 상태입니다. 현재 상태: $status")
+
+        registerEvent(
+            DeliveryApproachingEvent(
+                deliveryId = getDeliveryId(),
+                robotId = assignedRobotId!!,
+                destination = getCurrentDestination().location,
+                destinationType = destinationType,
+            ),
+        )
+    }
+
     fun arrived() {
         val nextStatus =
             when (status) {
@@ -143,6 +160,15 @@ class Delivery(
                 DeliveryStatus.RETURNING -> DeliveryStatus.RETURN_ARRIVED
                 else -> throw IllegalStateException("도착 처리할 수 없는 상태입니다. 현재 상태: $status")
             }
+
+        registerEvent(
+            DeliveryArrivedEvent(
+                deliveryId = getDeliveryId(),
+                robotId = assignedRobotId!!,
+                destination = getCurrentDestination().location,
+                destinationType = status.destinationType!!,
+            ),
+        )
         transitionTo(nextStatus)
     }
 
@@ -228,6 +254,8 @@ class Delivery(
         )
     }
 
+    fun isActive(): Boolean = !status.isTerminal()
+
     private fun transitionTo(newStatus: DeliveryStatus) {
         check(status.canTransitionTo(newStatus)) {
             "잘못된 상태 전이입니다: $status -> $newStatus"
@@ -235,15 +263,12 @@ class Delivery(
         this.status = newStatus
     }
 
-    fun isActive(): Boolean = !status.isTerminal()
-
     fun getCurrentDestination(): Destination =
-        when (status) {
-            DeliveryStatus.PENDING -> pickupDestination
-            DeliveryStatus.ASSIGNED, DeliveryStatus.PICKUP_ARRIVED, DeliveryStatus.PICKING_UP -> pickupDestination
-            DeliveryStatus.DELIVERING, DeliveryStatus.DELIVERY_ARRIVED, DeliveryStatus.DROPPING_OFF -> deliveryDestination
-            DeliveryStatus.RETURNING, DeliveryStatus.RETURN_ARRIVED, DeliveryStatus.RETURNING_OFF -> pickupDestination
-            DeliveryStatus.COMPLETED, DeliveryStatus.CANCELED, DeliveryStatus.RETURN_COMPLETED -> pickupDestination
+        when (status.destinationType) {
+            DestinationType.PICKUP -> pickupDestination
+            DestinationType.DELIVERY -> deliveryDestination
+            DestinationType.RETURN -> pickupDestination
+            null -> pickupDestination
         }
 
     fun getAssignedRobotIdOrThrow(): RobotId = assignedRobotId ?: throw IllegalStateException("배차된 로봇이 없습니다.")

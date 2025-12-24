@@ -3,6 +3,7 @@ package com.robotdelivery.domain.delivery.event
 import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.delivery.DestinationType
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -62,3 +63,17 @@ class DeliveryRobotReassignedEvent(
     val previousRobotId: RobotId,
     val newRobotId: RobotId,
 ) : DeliveryEvent(deliveryId = deliveryId, robotId = newRobotId)
+
+class DeliveryApproachingEvent(
+    deliveryId: DeliveryId,
+    robotId: RobotId,
+    val destination: Location,
+    val destinationType: DestinationType,
+) : DeliveryEvent(deliveryId = deliveryId, robotId = robotId)
+
+class DeliveryArrivedEvent(
+    deliveryId: DeliveryId,
+    robotId: RobotId,
+    val destination: Location,
+    val destinationType: DestinationType,
+) : DeliveryEvent(deliveryId = deliveryId, robotId = robotId)

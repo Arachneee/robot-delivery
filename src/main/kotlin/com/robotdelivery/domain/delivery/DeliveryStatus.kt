@@ -2,20 +2,22 @@ package com.robotdelivery.domain.delivery
 
 import java.util.EnumSet
 
-enum class DeliveryStatus {
-    PENDING,
-    ASSIGNED,
-    PICKUP_ARRIVED,
-    PICKING_UP,
-    DELIVERING,
-    DELIVERY_ARRIVED,
-    DROPPING_OFF,
-    COMPLETED,
-    CANCELED,
-    RETURNING,
-    RETURN_ARRIVED,
-    RETURNING_OFF,
-    RETURN_COMPLETED,
+enum class DeliveryStatus(
+    val destinationType: DestinationType?,
+) {
+    PENDING(DestinationType.PICKUP),
+    ASSIGNED(DestinationType.PICKUP),
+    PICKUP_ARRIVED(DestinationType.PICKUP),
+    PICKING_UP(DestinationType.PICKUP),
+    DELIVERING(DestinationType.DELIVERY),
+    DELIVERY_ARRIVED(DestinationType.DELIVERY),
+    DROPPING_OFF(DestinationType.DELIVERY),
+    COMPLETED(null),
+    CANCELED(null),
+    RETURNING(DestinationType.RETURN),
+    RETURN_ARRIVED(DestinationType.RETURN),
+    RETURNING_OFF(DestinationType.RETURN),
+    RETURN_COMPLETED(null),
     ;
 
     fun canTransitionTo(nextStatus: DeliveryStatus): Boolean =
