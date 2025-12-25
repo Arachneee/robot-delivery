@@ -12,7 +12,6 @@ sealed class RobotEvent(
 
 class RobotBecameAvailableEvent(
     val robotId: RobotId,
-    val location: Location,
 ) : RobotEvent()
 
 class RobotArrivedEvent(

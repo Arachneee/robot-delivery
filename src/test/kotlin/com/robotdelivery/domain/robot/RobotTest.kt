@@ -8,27 +8,17 @@ import com.robotdelivery.domain.robot.event.RobotBecameAvailableEvent
 import com.robotdelivery.domain.robot.event.RobotDestinationChangedEvent
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 
 @DisplayName("Robot 테스트")
 class RobotTest {
-    private lateinit var defaultLocation: Location
-
-    @BeforeEach
-    fun setUp() {
-        defaultLocation = Location(latitude = 37.5665, longitude = 126.9780)
-    }
-
     private fun createRobot(
         id: Long = 1L,
         name: String = "로봇-001",
         status: RobotStatus = RobotStatus.OFF_DUTY,
         drivingStatus: RobotDrivingStatus = RobotDrivingStatus.ARRIVED,
-        battery: Int = 100,
-        location: Location = defaultLocation,
         currentDeliveryId: DeliveryId? = null,
         destination: Location? = null,
     ): Robot =
@@ -37,8 +27,6 @@ class RobotTest {
             name = name,
             status = status,
             drivingStatus = drivingStatus,
-            battery = battery,
-            location = location,
             currentDeliveryId = currentDeliveryId,
             destination = destination,
         )
@@ -52,7 +40,6 @@ class RobotTest {
             val robot = createRobot()
 
             assertThat(robot.status).isEqualTo(RobotStatus.OFF_DUTY)
-            assertThat(robot.battery).isEqualTo(100)
             assertThat(robot.currentDeliveryId).isNull()
         }
 
@@ -205,6 +192,23 @@ class RobotTest {
         }
 
         @Test
+        @DisplayName("배달 완료 시 destination과 drivingStatus가 초기화된다")
+        fun `배달 완료 시 destination과 drivingStatus가 초기화된다`() {
+            val destination = Location(latitude = 37.5000, longitude = 127.0000)
+            val robot = createRobot(
+                status = RobotStatus.BUSY,
+                currentDeliveryId = DeliveryId(1L),
+                drivingStatus = RobotDrivingStatus.APPROACHING,
+                destination = destination,
+            )
+
+            robot.completeDelivery()
+
+            assertThat(robot.destination).isNull()
+            assertThat(robot.drivingStatus).isEqualTo(RobotDrivingStatus.ARRIVED)
+        }
+
+        @Test
         @DisplayName("배달 완료 시 RobotBecameAvailableEvent가 발생한다")
         fun `배달 완료 시 RobotBecameAvailableEvent가 발생한다`() {
             val robot = createRobot(status = RobotStatus.BUSY, currentDeliveryId = DeliveryId(1L))
@@ -242,8 +246,8 @@ class RobotTest {
         }
 
         @Test
-        @DisplayName("배차 취소 시 destination이 null로 설정된다")
-        fun `배차 취소 시 destination이 null로 설정된다`() {
+        @DisplayName("배차 취소 시 destination과 drivingStatus가 초기화된다")
+        fun `배차 취소 시 destination과 drivingStatus가 초기화된다`() {
             val robot = createRobot(status = RobotStatus.READY)
             val pickupLocation = Location(latitude = 37.5000, longitude = 127.0000)
             robot.assignDelivery(DeliveryId(1L), pickupLocation)
@@ -251,6 +255,7 @@ class RobotTest {
             robot.unassignDelivery()
 
             assertThat(robot.destination).isNull()
+            assertThat(robot.drivingStatus).isEqualTo(RobotDrivingStatus.ARRIVED)
         }
 
         @Test
@@ -287,69 +292,22 @@ class RobotTest {
     }
 
     @Nested
-    @DisplayName("배터리 업데이트 테스트")
-    inner class UpdateBatteryTest {
-        @Test
-        @DisplayName("유효한 배터리 값으로 업데이트할 수 있다")
-        fun `유효한 배터리 값으로 업데이트할 수 있다`() {
-            val robot = createRobot()
-
-            robot.updateBattery(50)
-
-            assertThat(robot.battery).isEqualTo(50)
-        }
-
-        @Test
-        @DisplayName("배터리 경계값으로 업데이트할 수 있다")
-        fun `배터리 경계값으로 업데이트할 수 있다`() {
-            val robot = createRobot()
-
-            robot.updateBattery(0)
-            assertThat(robot.battery).isEqualTo(0)
-
-            robot.updateBattery(100)
-            assertThat(robot.battery).isEqualTo(100)
-        }
-
-        @Test
-        @DisplayName("배터리가 0 미만이면 예외가 발생한다")
-        fun `배터리가 0 미만이면 예외가 발생한다`() {
-            val robot = createRobot()
-
-            assertThatThrownBy { robot.updateBattery(-1) }
-                .isInstanceOf(IllegalArgumentException::class.java)
-                .hasMessageContaining("배터리는 0에서 100 사이여야 합니다")
-        }
-
-        @Test
-        @DisplayName("배터리가 100 초과이면 예외가 발생한다")
-        fun `배터리가 100 초과이면 예외가 발생한다`() {
-            val robot = createRobot()
-
-            assertThatThrownBy { robot.updateBattery(101) }
-                .isInstanceOf(IllegalArgumentException::class.java)
-                .hasMessageContaining("배터리는 0에서 100 사이여야 합니다")
-        }
-    }
-
-    @Nested
-    @DisplayName("위치 업데이트 테스트")
-    inner class UpdateLocationTest {
+    @DisplayName("주행 상태 업데이트 테스트")
+    inner class UpdateDrivingStatusTest {
         private val destination = Location(latitude = 37.5000, longitude = 127.0000)
 
         @Test
-        @DisplayName("ON_GOING 상태에서 목적지 50m 이내 진입 시 APPROACHING으로 변경되고 RobotApprochingEvent가 1번 발행된다")
-        fun `ON_GOING 상태에서 목적지 50m 이내 진입 시 APPROACHING으로 변경되고 RobotApproachingEvent가 1번 발행된다`() {
-            val robot =
-                createRobot(
-                    status = RobotStatus.BUSY,
-                    drivingStatus = RobotDrivingStatus.ON_GOING,
-                    currentDeliveryId = DeliveryId(1L),
-                    destination = destination,
-                )
+        @DisplayName("ON_GOING 상태에서 목적지 50m 이내 진입 시 APPROACHING으로 변경되고 RobotApproachingEvent가 발행된다")
+        fun `ON_GOING 상태에서 목적지 50m 이내 진입 시 APPROACHING으로 변경되고 RobotApproachingEvent가 발행된다`() {
+            val robot = createRobot(
+                status = RobotStatus.BUSY,
+                drivingStatus = RobotDrivingStatus.ON_GOING,
+                currentDeliveryId = DeliveryId(1L),
+                destination = destination,
+            )
             val locationWithin50m = Location(latitude = 37.5003, longitude = 127.0000)
 
-            robot.updateLocation(locationWithin50m)
+            robot.updateDrivingStatus(locationWithin50m)
             val events = robot.pullDomainEvents()
 
             assertThat(robot.drivingStatus).isEqualTo(RobotDrivingStatus.APPROACHING)
@@ -358,18 +316,17 @@ class RobotTest {
         }
 
         @Test
-        @DisplayName("APPROACHING 상태에서 목적지 5m 이내 진입 시 ARRIVED로 변경되고 RobotArrivedEvent가 1번 발행된다")
-        fun `APPROACHING 상태에서 목적지 5m 이내 진입 시 ARRIVED로 변경되고 RobotArrivedEvent가 1번 발행된다`() {
-            val robot =
-                createRobot(
-                    status = RobotStatus.BUSY,
-                    drivingStatus = RobotDrivingStatus.APPROACHING,
-                    currentDeliveryId = DeliveryId(1L),
-                    destination = destination,
-                )
+        @DisplayName("APPROACHING 상태에서 목적지 5m 이내 진입 시 ARRIVED로 변경되고 RobotArrivedEvent가 발행된다")
+        fun `APPROACHING 상태에서 목적지 5m 이내 진입 시 ARRIVED로 변경되고 RobotArrivedEvent가 발행된다`() {
+            val robot = createRobot(
+                status = RobotStatus.BUSY,
+                drivingStatus = RobotDrivingStatus.APPROACHING,
+                currentDeliveryId = DeliveryId(1L),
+                destination = destination,
+            )
             val locationWithin5m = Location(latitude = 37.50003, longitude = 127.0000)
 
-            robot.updateLocation(locationWithin5m)
+            robot.updateDrivingStatus(locationWithin5m)
             val events = robot.pullDomainEvents()
 
             assertThat(robot.drivingStatus).isEqualTo(RobotDrivingStatus.ARRIVED)
@@ -378,18 +335,17 @@ class RobotTest {
         }
 
         @Test
-        @DisplayName("ON_GOING 상태에서 목적지 5m 이내 진입 시 ARRIVED로 변경되고 RobotApproachingEvent와 RobotArrivedEvent가 1번씩 발행된다")
-        fun `ON_GOING 상태에서 목적지 5m 이내 진입 시 ARRIVED로 변경되고 RobotApproachingEvent와 RobotArrivedEvent가 1번씩 발행된다`() {
-            val robot =
-                createRobot(
-                    status = RobotStatus.BUSY,
-                    drivingStatus = RobotDrivingStatus.ON_GOING,
-                    currentDeliveryId = DeliveryId(1L),
-                    destination = destination,
-                )
+        @DisplayName("ON_GOING 상태에서 목적지 5m 이내 진입 시 ARRIVED로 변경되고 두 이벤트가 모두 발행된다")
+        fun `ON_GOING 상태에서 목적지 5m 이내 진입 시 ARRIVED로 변경되고 두 이벤트가 모두 발행된다`() {
+            val robot = createRobot(
+                status = RobotStatus.BUSY,
+                drivingStatus = RobotDrivingStatus.ON_GOING,
+                currentDeliveryId = DeliveryId(1L),
+                destination = destination,
+            )
             val locationWithin5m = Location(latitude = 37.50003, longitude = 127.0000)
 
-            robot.updateLocation(locationWithin5m)
+            robot.updateDrivingStatus(locationWithin5m)
             val events = robot.pullDomainEvents()
 
             assertThat(robot.drivingStatus).isEqualTo(RobotDrivingStatus.ARRIVED)
@@ -399,56 +355,35 @@ class RobotTest {
         }
 
         @Test
-        @DisplayName("APPROACHING 상태에서 목적지 50m 이내 진입 시 APPROACHING이 유지되고 이벤트가 발행되지 않는다")
-        fun `APPROACHING 상태에서 목적지 50m 이내 진입 시 APPROACHING이 유지되고 이벤트가 발행되지 않는다`() {
-            val robot =
-                createRobot(
-                    status = RobotStatus.BUSY,
-                    drivingStatus = RobotDrivingStatus.APPROACHING,
-                    currentDeliveryId = DeliveryId(1L),
-                    destination = destination,
-                )
-            val locationWithin50m = Location(latitude = 37.5003, longitude = 127.0000)
+        @DisplayName("목적지가 없으면 상태가 변경되지 않는다")
+        fun `목적지가 없으면 상태가 변경되지 않는다`() {
+            val robot = createRobot(
+                status = RobotStatus.BUSY,
+                drivingStatus = RobotDrivingStatus.ON_GOING,
+                currentDeliveryId = DeliveryId(1L),
+                destination = null,
+            )
+            val newLocation = Location(latitude = 37.5000, longitude = 127.0000)
 
-            robot.updateLocation(locationWithin50m)
+            robot.updateDrivingStatus(newLocation)
             val events = robot.pullDomainEvents()
 
-            assertThat(robot.drivingStatus).isEqualTo(RobotDrivingStatus.APPROACHING)
+            assertThat(robot.drivingStatus).isEqualTo(RobotDrivingStatus.ON_GOING)
             assertThat(events).isEmpty()
         }
 
         @Test
-        @DisplayName("ARRIVED 상태에서 목적지 5m 이내 진입 시 ARRIVED가 유지되고 이벤트가 발행되지 않는다")
-        fun `ARRIVED 상태에서 목적지 5m 이내 진입 시 ARRIVED가 유지되고 이벤트가 발행되지 않는다`() {
-            val robot =
-                createRobot(
-                    status = RobotStatus.BUSY,
-                    drivingStatus = RobotDrivingStatus.ARRIVED,
-                    currentDeliveryId = DeliveryId(1L),
-                    destination = destination,
-                )
-            val locationWithin5m = Location(latitude = 37.50003, longitude = 127.0000)
-
-            robot.updateLocation(locationWithin5m)
-            val events = robot.pullDomainEvents()
-
-            assertThat(robot.drivingStatus).isEqualTo(RobotDrivingStatus.ARRIVED)
-            assertThat(events).isEmpty()
-        }
-
-        @Test
-        @DisplayName("ON_GOING 상태에서 목적지 50m 초과 시 ON_GOING이 유지되고 이벤트가 발행되지 않는다")
-        fun `ON_GOING 상태에서 목적지 50m 초과 시 ON_GOING이 유지되고 이벤트가 발행되지 않는다`() {
-            val robot =
-                createRobot(
-                    status = RobotStatus.BUSY,
-                    drivingStatus = RobotDrivingStatus.ON_GOING,
-                    currentDeliveryId = DeliveryId(1L),
-                    destination = destination,
-                )
+        @DisplayName("ON_GOING 상태에서 목적지 50m 초과 시 상태가 유지된다")
+        fun `ON_GOING 상태에서 목적지 50m 초과 시 상태가 유지된다`() {
+            val robot = createRobot(
+                status = RobotStatus.BUSY,
+                drivingStatus = RobotDrivingStatus.ON_GOING,
+                currentDeliveryId = DeliveryId(1L),
+                destination = destination,
+            )
             val locationBeyond50m = Location(latitude = 37.501, longitude = 127.0000)
 
-            robot.updateLocation(locationBeyond50m)
+            robot.updateDrivingStatus(locationBeyond50m)
             val events = robot.pullDomainEvents()
 
             assertThat(robot.drivingStatus).isEqualTo(RobotDrivingStatus.ON_GOING)
@@ -457,54 +392,38 @@ class RobotTest {
     }
 
     @Nested
-    @DisplayName("가용성 테스트")
-    inner class AvailabilityTest {
+    @DisplayName("배달 가용성 테스트")
+    inner class AvailabilityForDeliveryTest {
         @Test
-        @DisplayName("READY 상태이고 배달이 없고 배터리가 20 이상이면 사용 가능하다")
-        fun `READY 상태이고 배달이 없고 배터리가 20 이상이면 사용 가능하다`() {
-            val robot = createRobot(status = RobotStatus.READY, battery = 50)
+        @DisplayName("READY 상태이고 배달이 없으면 배달 가능하다")
+        fun `READY 상태이고 배달이 없으면 배달 가능하다`() {
+            val robot = createRobot(status = RobotStatus.READY)
 
-            assertThat(robot.isAvailable()).isTrue()
+            assertThat(robot.isAvailableForDelivery()).isTrue()
         }
 
         @Test
-        @DisplayName("배터리가 20 미만이면 사용 불가능하다")
-        fun `배터리가 20 미만이면 사용 불가능하다`() {
-            val robot = createRobot(status = RobotStatus.READY, battery = 19)
-
-            assertThat(robot.isAvailable()).isFalse()
-        }
-
-        @Test
-        @DisplayName("배터리가 정확히 20이면 사용 가능하다")
-        fun `배터리가 정확히 20이면 사용 가능하다`() {
-            val robot = createRobot(status = RobotStatus.READY, battery = 20)
-
-            assertThat(robot.isAvailable()).isTrue()
-        }
-
-        @Test
-        @DisplayName("BUSY 상태이면 사용 불가능하다")
-        fun `BUSY 상태이면 사용 불가능하다`() {
+        @DisplayName("BUSY 상태이면 배달 불가능하다")
+        fun `BUSY 상태이면 배달 불가능하다`() {
             val robot = createRobot(status = RobotStatus.BUSY, currentDeliveryId = DeliveryId(1L))
 
-            assertThat(robot.isAvailable()).isFalse()
+            assertThat(robot.isAvailableForDelivery()).isFalse()
         }
 
         @Test
-        @DisplayName("OFF_DUTY 상태이면 사용 불가능하다")
-        fun `OFF_DUTY 상태이면 사용 불가능하다`() {
+        @DisplayName("OFF_DUTY 상태이면 배달 불가능하다")
+        fun `OFF_DUTY 상태이면 배달 불가능하다`() {
             val robot = createRobot()
 
-            assertThat(robot.isAvailable()).isFalse()
+            assertThat(robot.isAvailableForDelivery()).isFalse()
         }
 
         @Test
-        @DisplayName("현재 배달이 할당되어 있으면 사용 불가능하다")
-        fun `현재 배달이 할당되어 있으면 사용 불가능하다`() {
+        @DisplayName("현재 배달이 할당되어 있으면 배달 불가능하다")
+        fun `현재 배달이 할당되어 있으면 배달 불가능하다`() {
             val robot = createRobot(status = RobotStatus.READY, currentDeliveryId = DeliveryId(1L))
 
-            assertThat(robot.isAvailable()).isFalse()
+            assertThat(robot.isAvailableForDelivery()).isFalse()
         }
     }
 

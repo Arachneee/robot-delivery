@@ -17,7 +17,6 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
-import org.slf4j.LoggerFactory
 
 @Entity
 @Table(name = "robots")
@@ -34,14 +33,6 @@ class Robot(
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     var drivingStatus: RobotDrivingStatus = RobotDrivingStatus.ARRIVED,
-    @Column(nullable = false)
-    var battery: Int = 100,
-    @Embedded
-    @AttributeOverrides(
-        AttributeOverride(name = "latitude", column = Column(name = "location_latitude")),
-        AttributeOverride(name = "longitude", column = Column(name = "location_longitude")),
-    )
-    var location: Location,
     @Embedded
     @AttributeOverride(name = "value", column = Column(name = "current_delivery_id", nullable = true))
     var currentDeliveryId: DeliveryId? = null,
@@ -58,7 +49,7 @@ class Robot(
         }
         transitionTo(RobotStatus.READY)
 
-        registerEvent(RobotBecameAvailableEvent(robotId = getRobotId(), location = location))
+        registerEvent(RobotBecameAvailableEvent(robotId = getRobotId()))
     }
 
     fun endDuty() {
@@ -94,9 +85,11 @@ class Robot(
             "할당된 배달이 없습니다."
         }
         this.currentDeliveryId = null
+        this.destination = null
+        this.drivingStatus = RobotDrivingStatus.ARRIVED
         transitionTo(RobotStatus.READY)
 
-        registerEvent(RobotBecameAvailableEvent(robotId = getRobotId(), location = location))
+        registerEvent(RobotBecameAvailableEvent(robotId = getRobotId()))
     }
 
     fun unassignDelivery() {
@@ -106,11 +99,13 @@ class Robot(
         check(currentDeliveryId != null) {
             "할당된 배달이 없습니다."
         }
+
         this.currentDeliveryId = null
         this.destination = null
+        this.drivingStatus = RobotDrivingStatus.ARRIVED
         transitionTo(RobotStatus.READY)
 
-        registerEvent(RobotBecameAvailableEvent(robotId = getRobotId(), location = location))
+        registerEvent(RobotBecameAvailableEvent(robotId = getRobotId()))
     }
 
     fun navigateTo(newDestination: Location) {
@@ -123,25 +118,17 @@ class Robot(
         registerEvent(RobotDestinationChangedEvent(robotId = getRobotId(), destination = newDestination))
     }
 
-    fun updateBattery(newBattery: Int) {
-        require(newBattery in 0..100) {
-            "배터리는 0에서 100 사이여야 합니다."
-        }
-        this.battery = newBattery
-    }
-
-    fun updateLocation(newLocation: Location) {
-        this.location = newLocation
+    fun updateDrivingStatus(newLocation: Location) {
         val dest = destination ?: return
-        val distanceTo = location.distanceTo(dest)
 
+        val distanceTo = newLocation.distanceTo(dest)
         while (drivingStatus.isAbleToNextStatus(distanceTo)) {
             drivingStatus = drivingStatus.nextStatus!!
             drivingStatus.createEvent(robotId = getRobotId(), destination = dest)?.let { registerEvent(it) }
         }
     }
 
-    fun isAvailable(): Boolean = status.isAvailableForDelivery() && currentDeliveryId == null && battery >= 20
+    fun isAvailableForDelivery(): Boolean = status.isAvailableForDelivery() && currentDeliveryId == null
 
     fun getRobotId(): RobotId = RobotId(id)
 
@@ -152,10 +139,6 @@ class Robot(
         this.status = newStatus
     }
 
-    companion object {
-        private val log = LoggerFactory.getLogger(javaClass)
-    }
-
     override fun toString(): String =
-        "Robot(id=$id, name='$name', status=$status, battery=$battery, location=$location, currentDeliveryId=$currentDeliveryId)"
+        "Robot(id=$id, name='$name', status=$status, drivingStatus=$drivingStatus, currentDeliveryId=$currentDeliveryId)"
 }
