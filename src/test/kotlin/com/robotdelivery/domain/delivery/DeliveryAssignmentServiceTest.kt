@@ -3,8 +3,11 @@ package com.robotdelivery.domain.delivery
 import com.robotdelivery.config.IntegrationTestSupport
 import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.robot.Robot
+import com.robotdelivery.domain.robot.RobotIotState
+import com.robotdelivery.domain.robot.RobotIotStateRepository
 import com.robotdelivery.domain.robot.RobotRepository
 import com.robotdelivery.domain.robot.RobotStatus
+import com.robotdelivery.infrastructure.persistence.InMemoryRobotIotStateRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -21,12 +24,16 @@ class DeliveryAssignmentServiceTest : IntegrationTestSupport() {
     private lateinit var deliveryRepository: DeliveryRepository
 
     @Autowired
+    private lateinit var iotStateRepository: RobotIotStateRepository
+
+    @Autowired
     private lateinit var assignmentService: DeliveryAssignmentService
 
     @BeforeEach
     fun setUp() {
         deliveryRepository.deleteAll()
         robotRepository.deleteAll()
+        (iotStateRepository as InMemoryRobotIotStateRepository).deleteAll()
     }
 
     private fun saveDelivery(pickupLocation: Location = Location(latitude = 37.5665, longitude = 126.9780)): Delivery {
@@ -51,18 +58,25 @@ class DeliveryAssignmentServiceTest : IntegrationTestSupport() {
     private fun saveReadyRobot(
         name: String,
         location: Location,
+        battery: Int = 100,
     ): Robot {
-        val robot =
-            Robot(
-                name = name,
-                status = RobotStatus.OFF_DUTY,
-                battery = 100,
-                location = location,
-            )
+        val robot = Robot(name = name, status = RobotStatus.OFF_DUTY)
         val savedRobot = robotRepository.saveAndFlush(robot)
         savedRobot.startDuty()
         savedRobot.pullDomainEvents()
-        return robotRepository.saveAndFlush(savedRobot)
+        val readyRobot = robotRepository.saveAndFlush(savedRobot)
+
+        iotStateRepository.save(
+            RobotIotState(
+                robotId = readyRobot.getRobotId(),
+                location = location,
+                battery = battery,
+                doorOpen = false,
+                loadWeight = 0.0,
+            ),
+        )
+
+        return readyRobot
     }
 
     @Nested

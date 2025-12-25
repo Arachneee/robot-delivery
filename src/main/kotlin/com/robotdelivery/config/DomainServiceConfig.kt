@@ -1,5 +1,6 @@
 package com.robotdelivery.config
 
+import com.robotdelivery.application.query.RobotQueryService
 import com.robotdelivery.domain.delivery.DeliveryAssignmentService
 import com.robotdelivery.domain.delivery.DeliveryRepository
 import com.robotdelivery.domain.robot.RobotRepository
@@ -12,5 +13,6 @@ class DomainServiceConfig {
     fun deliveryAssignmentService(
         robotRepository: RobotRepository,
         deliveryRepository: DeliveryRepository,
-    ): DeliveryAssignmentService = DeliveryAssignmentService(robotRepository, deliveryRepository)
+        robotQueryService: RobotQueryService,
+    ): DeliveryAssignmentService = DeliveryAssignmentService(robotRepository, deliveryRepository, robotQueryService)
 }
