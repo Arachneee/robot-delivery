@@ -14,6 +14,7 @@ import com.robotdelivery.domain.robot.RobotRepository
 import com.robotdelivery.domain.robot.RobotStatus
 import com.robotdelivery.domain.robot.event.RobotApproachingEvent
 import com.robotdelivery.domain.robot.event.RobotArrivedEvent
+import com.robotdelivery.domain.robot.findById
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -60,27 +61,18 @@ class DeliveryRobotEventHandlerTest : IntegrationTestSupport() {
         return deliveryRepository.saveAndFlush(delivery)
     }
 
-    private fun saveRobot(
-        name: String = "로봇-1",
-        location: Location = Location(latitude = 37.5665, longitude = 126.9780),
-    ): Robot {
-        val robot =
-            Robot(
-                name = name,
-                status = RobotStatus.OFF_DUTY,
-                battery = 100,
-                location = location,
-            )
+    private fun saveRobot(name: String = "로봇-1"): Robot {
+        val robot = Robot(name = name, status = RobotStatus.OFF_DUTY)
         return robotRepository.saveAndFlush(robot)
     }
 
     private fun saveRobotWithDelivery(
         delivery: Delivery,
-        location: Location = Location(latitude = 37.5665, longitude = 126.9780),
+        pickupLocation: Location = Location(latitude = 37.5665, longitude = 126.9780),
     ): Robot {
-        val robot = saveRobot(location = location)
+        val robot = saveRobot()
         robot.startDuty()
-        robot.assignDelivery(delivery.getDeliveryId(), location)
+        robot.assignDelivery(delivery.getDeliveryId(), pickupLocation)
         robot.pullDomainEvents()
         return robotRepository.saveAndFlush(robot)
     }

@@ -13,6 +13,7 @@ import com.robotdelivery.domain.delivery.Destination
 import com.robotdelivery.domain.robot.Robot
 import com.robotdelivery.domain.robot.RobotRepository
 import com.robotdelivery.domain.robot.RobotStatus
+import com.robotdelivery.domain.robot.findById
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
@@ -893,13 +894,7 @@ class DeliveryServiceTest : IntegrationTestSupport() {
     }
 
     private fun saveRobot(name: String = "로봇-1"): Robot {
-        val robot =
-            Robot(
-                name = name,
-                status = RobotStatus.OFF_DUTY,
-                battery = 100,
-                location = Location(latitude = 37.5665, longitude = 126.9780),
-            )
+        val robot = Robot(name = name, status = RobotStatus.OFF_DUTY)
         return robotRepository.saveAndFlush(robot)
     }
 

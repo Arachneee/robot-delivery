@@ -5,6 +5,7 @@ import com.robotdelivery.domain.delivery.DeliveryRepository
 import com.robotdelivery.domain.delivery.event.DeliveryCreatedEvent
 import com.robotdelivery.domain.robot.RobotRepository
 import com.robotdelivery.domain.robot.event.RobotBecameAvailableEvent
+import com.robotdelivery.domain.robot.findById
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component

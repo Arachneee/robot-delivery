@@ -102,7 +102,7 @@ class DeliveryService(
         val previousRobotId = delivery.assignedRobotId
 
         val newRobot = robotRepository.getById(newRobotId)
-        check(newRobot.isAvailable()) {
+        check(newRobot.isAvailableForDelivery()) {
             "새 로봇이 배차 가능한 상태가 아닙니다."
         }
 

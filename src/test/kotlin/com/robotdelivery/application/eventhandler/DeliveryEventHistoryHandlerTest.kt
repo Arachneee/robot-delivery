@@ -62,13 +62,7 @@ class DeliveryEventHistoryHandlerTest : IntegrationTestSupport() {
     }
 
     private fun saveRobot(): Robot {
-        val robot =
-            Robot(
-                name = "로봇-1",
-                status = RobotStatus.OFF_DUTY,
-                battery = 100,
-                location = Location(latitude = 37.5665, longitude = 126.9780),
-            )
+        val robot = Robot(name = "로봇-1", status = RobotStatus.OFF_DUTY)
         val savedRobot = robotRepository.saveAndFlush(robot)
         savedRobot.startDuty()
         savedRobot.pullDomainEvents()

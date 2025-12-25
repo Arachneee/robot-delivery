@@ -9,9 +9,13 @@ import com.robotdelivery.domain.delivery.DeliveryStatus
 import com.robotdelivery.domain.delivery.Destination
 import com.robotdelivery.domain.delivery.event.DeliveryCreatedEvent
 import com.robotdelivery.domain.robot.Robot
+import com.robotdelivery.domain.robot.RobotIotState
+import com.robotdelivery.domain.robot.RobotIotStateRepository
 import com.robotdelivery.domain.robot.RobotRepository
 import com.robotdelivery.domain.robot.RobotStatus
 import com.robotdelivery.domain.robot.event.RobotBecameAvailableEvent
+import com.robotdelivery.domain.robot.findById
+import com.robotdelivery.infrastructure.persistence.InMemoryRobotIotStateRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -28,12 +32,16 @@ class DeliveryAssignmentEventHandlerTest : IntegrationTestSupport() {
     private lateinit var robotRepository: RobotRepository
 
     @Autowired
+    private lateinit var iotStateRepository: RobotIotStateRepository
+
+    @Autowired
     private lateinit var eventHandler: DeliveryAssignmentEventHandler
 
     @BeforeEach
     fun setUp() {
         deliveryRepository.deleteAll()
         robotRepository.deleteAll()
+        (iotStateRepository as InMemoryRobotIotStateRepository).deleteAll()
     }
 
     private fun saveDelivery(pickupLocation: Location = Location(latitude = 37.5665, longitude = 126.9780)): Delivery {
@@ -57,22 +65,30 @@ class DeliveryAssignmentEventHandlerTest : IntegrationTestSupport() {
     private fun saveRobot(
         name: String = "로봇-1",
         location: Location = Location(latitude = 37.5665, longitude = 126.9780),
+        battery: Int = 100,
     ): Robot {
-        val robot =
-            Robot(
-                name = name,
-                status = RobotStatus.OFF_DUTY,
-                battery = 100,
+        val robot = Robot(name = name, status = RobotStatus.OFF_DUTY)
+        val savedRobot = robotRepository.saveAndFlush(robot)
+
+        iotStateRepository.save(
+            RobotIotState(
+                robotId = savedRobot.getRobotId(),
                 location = location,
-            )
-        return robotRepository.saveAndFlush(robot)
+                battery = battery,
+                doorOpen = false,
+                loadWeight = 0.0,
+            ),
+        )
+
+        return savedRobot
     }
 
     private fun saveReadyRobot(
         name: String = "로봇-1",
         location: Location = Location(latitude = 37.5665, longitude = 126.9780),
+        battery: Int = 100,
     ): Robot {
-        val robot = saveRobot(name, location)
+        val robot = saveRobot(name, location, battery)
         robot.startDuty()
         robot.pullDomainEvents()
         return robotRepository.saveAndFlush(robot)
@@ -165,11 +181,7 @@ class DeliveryAssignmentEventHandlerTest : IntegrationTestSupport() {
             val robotLocation = Location(latitude = 37.5665, longitude = 126.9780)
             val robot = saveReadyRobot(location = robotLocation)
             val delivery = saveDelivery(pickupLocation = Location(37.5660, 126.9770))
-            val event =
-                RobotBecameAvailableEvent(
-                    robotId = robot.getRobotId(),
-                    location = robotLocation,
-                )
+            val event = RobotBecameAvailableEvent(robotId = robot.getRobotId())
 
             eventHandler.handle(event)
 
@@ -185,11 +197,7 @@ class DeliveryAssignmentEventHandlerTest : IntegrationTestSupport() {
         @DisplayName("대기 중인 배달이 없으면 배정되지 않는다")
         fun `대기 중인 배달이 없으면 배정되지 않는다`() {
             val robot = saveReadyRobot()
-            val event =
-                RobotBecameAvailableEvent(
-                    robotId = robot.getRobotId(),
-                    location = robot.location,
-                )
+            val event = RobotBecameAvailableEvent(robotId = robot.getRobotId())
 
             eventHandler.handle(event)
 
@@ -204,8 +212,9 @@ class DeliveryAssignmentEventHandlerTest : IntegrationTestSupport() {
             saveDelivery()
             val event =
                 RobotBecameAvailableEvent(
-                    robotId = com.robotdelivery.domain.common.RobotId(99999L),
-                    location = Location(37.5665, 126.9780),
+                    robotId =
+                        com.robotdelivery.domain.common
+                            .RobotId(99999L),
                 )
 
             eventHandler.handle(event)
@@ -216,11 +225,7 @@ class DeliveryAssignmentEventHandlerTest : IntegrationTestSupport() {
         fun `로봇이 가용 상태가 아니면 배정되지 않는다`() {
             val robot = saveRobot()
             saveDelivery()
-            val event =
-                RobotBecameAvailableEvent(
-                    robotId = robot.getRobotId(),
-                    location = robot.location,
-                )
+            val event = RobotBecameAvailableEvent(robotId = robot.getRobotId())
 
             eventHandler.handle(event)
 
@@ -236,11 +241,7 @@ class DeliveryAssignmentEventHandlerTest : IntegrationTestSupport() {
             val robot = saveReadyRobot(location = robotLocation)
             saveDelivery(pickupLocation = Location(37.6000, 127.1000))
             val nearDelivery = saveDelivery(pickupLocation = Location(37.5005, 127.0005))
-            val event =
-                RobotBecameAvailableEvent(
-                    robotId = robot.getRobotId(),
-                    location = robotLocation,
-                )
+            val event = RobotBecameAvailableEvent(robotId = robot.getRobotId())
 
             eventHandler.handle(event)
 
