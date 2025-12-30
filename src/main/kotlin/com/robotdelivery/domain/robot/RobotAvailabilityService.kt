@@ -1,29 +1,12 @@
-package com.robotdelivery.application.query
+package com.robotdelivery.domain.robot
 
 import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.common.RobotId
-import com.robotdelivery.domain.robot.RobotIotState
-import com.robotdelivery.domain.robot.RobotIotStateRepository
-import com.robotdelivery.domain.robot.RobotRepository
-import com.robotdelivery.domain.robot.findById
-import org.springframework.stereotype.Service
 
-@Service
-class RobotQueryService(
+class RobotAvailabilityService(
     private val robotRepository: RobotRepository,
     private val iotStateRepository: RobotIotStateRepository,
 ) {
-    fun updateIotState(iotState: RobotIotState) {
-        iotStateRepository.save(iotState)
-
-        val robot = robotRepository.findById(iotState.robotId) ?: return
-
-        if (robot.destination != null) {
-            robot.updateDrivingStatus(iotState.location)
-            robotRepository.save(robot)
-        }
-    }
-
     fun findNearestAvailableRobotId(
         pickupLocation: Location,
         minimumBattery: Int = 20,
@@ -31,17 +14,21 @@ class RobotQueryService(
         val iotStates =
             iotStateRepository
                 .findAll()
+                .asSequence()
                 .filter { it.hasSufficientBattery(minimumBattery) }
+                .toList()
                 .ifEmpty { return null }
 
         val availableRobotIds =
             robotRepository
                 .findAllById(iotStates.map { it.robotId.value })
+                .asSequence()
                 .filter { it.isAvailableForDelivery() }
                 .map { it.getRobotId() }
                 .toSet()
 
         return iotStates
+            .asSequence()
             .filter { it.robotId in availableRobotIds }
             .minByOrNull { it.distanceTo(pickupLocation) }
             ?.robotId

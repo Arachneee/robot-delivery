@@ -1,6 +1,6 @@
 package com.robotdelivery.application.eventhandler
 
-import com.robotdelivery.application.query.RobotQueryService
+import com.robotdelivery.application.command.RobotService
 import com.robotdelivery.domain.robot.RobotIotState
 import com.robotdelivery.infrastructure.event.external.RobotIotUpdatedEvent
 import jakarta.transaction.Transactional
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component
 
 @Component
 class RobotIotEventHandler(
-    private val robotQueryService: RobotQueryService,
+    private val robotService: RobotService,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -37,6 +37,6 @@ class RobotIotEventHandler(
                 loadWeight = event.loadWeight,
             )
 
-        robotQueryService.updateIotState(iotState)
+        robotService.updateIotState(iotState)
     }
 }
