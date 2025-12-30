@@ -9,7 +9,7 @@ import com.robotdelivery.domain.robot.event.RobotEvent
 enum class RobotDrivingStatus(
     val thresholdMeter: Double,
     private val nextStatusProvider: () -> RobotDrivingStatus?,
-    private val eventFactory: ((RobotId, Location) -> RobotEvent)?,
+    private val eventFactory: RobotEventFactory?,
 ) {
     ON_GOING(1500.0, { APPROACHING }, null),
     APPROACHING(50.0, { ARRIVED }, { robotId, dest -> RobotApproachingEvent(robotId, dest) }),
