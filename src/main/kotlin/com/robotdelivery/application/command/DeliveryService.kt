@@ -4,10 +4,15 @@ import com.robotdelivery.application.client.RobotClient
 import com.robotdelivery.application.command.vo.ChangeStatusResult
 import com.robotdelivery.application.command.vo.CreateDeliveryCommand
 import com.robotdelivery.domain.common.DeliveryId
+import com.robotdelivery.domain.common.OrderNo
 import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.delivery.Delivery
 import com.robotdelivery.domain.delivery.DeliveryRepository
 import com.robotdelivery.domain.delivery.DeliveryStatus
 import com.robotdelivery.domain.delivery.getById
+import com.robotdelivery.domain.order.Order
+import com.robotdelivery.domain.order.OrderRepository
+import com.robotdelivery.domain.order.getByOrderNo
 import com.robotdelivery.domain.robot.RobotRepository
 import com.robotdelivery.domain.robot.getById
 import org.springframework.stereotype.Service
@@ -17,14 +22,37 @@ import org.springframework.transaction.annotation.Transactional
 @Transactional
 class DeliveryService(
     private val deliveryRepository: DeliveryRepository,
+    private val orderRepository: OrderRepository,
     private val robotRepository: RobotRepository,
     private val robotClient: RobotClient,
 ) {
-    fun createDelivery(command: CreateDeliveryCommand): DeliveryId =
-        command
-            .toDelivery()
-            .let { deliveryRepository.saveAndFlush(it) }
-            .getDeliveryId()
+    fun createDelivery(command: CreateDeliveryCommand): DeliveryId {
+        val order = command.toOrder()
+        val savedOrder = orderRepository.saveAndFlush(order)
+
+        val totalVolume = savedOrder.calculateTotalVolume()
+        val delivery = command.toDelivery(savedOrder.getOrderId(), totalVolume)
+
+        return deliveryRepository.saveAndFlush(delivery).getDeliveryId()
+    }
+
+    fun createAdditionalDelivery(orderNo: OrderNo): DeliveryId {
+        val order = orderRepository.getByOrderNo(orderNo)
+        return createDeliveryFromOrder(order)
+    }
+
+    private fun createDeliveryFromOrder(order: Order): DeliveryId {
+        val totalVolume = order.calculateTotalVolume()
+        val delivery = Delivery(
+            orderId = order.getOrderId(),
+            pickupDestination = order.pickupDestination,
+            deliveryDestination = order.deliveryDestination,
+            phoneNumber = order.phoneNumber,
+            totalVolume = totalVolume,
+        )
+
+        return deliveryRepository.saveAndFlush(delivery).getDeliveryId()
+    }
 
     fun startDelivery(deliveryId: DeliveryId) {
         val delivery = deliveryRepository.getById(deliveryId)

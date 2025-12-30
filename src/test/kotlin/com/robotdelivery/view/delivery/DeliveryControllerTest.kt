@@ -3,9 +3,13 @@ package com.robotdelivery.view.delivery
 import com.robotdelivery.application.command.DeliveryService
 import com.robotdelivery.config.ControllerTestSupport
 import com.robotdelivery.domain.common.DeliveryId
+import com.robotdelivery.domain.common.OrderNo
 import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.view.delivery.dto.CreateAdditionalDeliveryRequest
 import com.robotdelivery.view.delivery.dto.CreateDeliveryRequest
+import com.robotdelivery.view.delivery.dto.OrderItemRequest
 import com.robotdelivery.view.delivery.dto.ReassignRobotRequest
+import java.math.BigDecimal
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -39,6 +43,7 @@ class DeliveryControllerTest : ControllerTestSupport() {
     fun `배달 생성 API 성공`() {
         val request =
             CreateDeliveryRequest(
+                orderNo = "ORDER-001",
                 pickupAddress = "서울시 중구 세종대로 110",
                 pickupAddressDetail = "시청역 1번 출구",
                 pickupLatitude = 37.5665,
@@ -48,6 +53,14 @@ class DeliveryControllerTest : ControllerTestSupport() {
                 deliveryLatitude = 37.5087,
                 deliveryLongitude = 127.0632,
                 phoneNumber = "010-1234-5678",
+                items = listOf(
+                    OrderItemRequest(
+                        name = "테스트 상품",
+                        price = BigDecimal("10000"),
+                        quantity = 1,
+                        volume = 1.0,
+                    ),
+                ),
             )
 
         val deliveryId = DeliveryId(1L)
@@ -68,6 +81,9 @@ class DeliveryControllerTest : ControllerTestSupport() {
                     preprocessRequest(prettyPrint()),
                     preprocessResponse(prettyPrint()),
                     requestFields(
+                        fieldWithPath("orderNo")
+                            .type(JsonFieldType.STRING)
+                            .description("주문 번호"),
                         fieldWithPath("pickupAddress")
                             .type(JsonFieldType.STRING)
                             .description("픽업 주소"),
@@ -97,6 +113,21 @@ class DeliveryControllerTest : ControllerTestSupport() {
                         fieldWithPath("phoneNumber")
                             .type(JsonFieldType.STRING)
                             .description("연락처"),
+                        fieldWithPath("items")
+                            .type(JsonFieldType.ARRAY)
+                            .description("주문 물품 목록"),
+                        fieldWithPath("items[].name")
+                            .type(JsonFieldType.STRING)
+                            .description("물품 이름"),
+                        fieldWithPath("items[].price")
+                            .type(JsonFieldType.NUMBER)
+                            .description("물품 가격"),
+                        fieldWithPath("items[].quantity")
+                            .type(JsonFieldType.NUMBER)
+                            .description("물품 수량"),
+                        fieldWithPath("items[].volume")
+                            .type(JsonFieldType.NUMBER)
+                            .description("물품 부피"),
                     ),
                     responseFields(
                         fieldWithPath("deliveryId")
@@ -115,6 +146,7 @@ class DeliveryControllerTest : ControllerTestSupport() {
     fun `배달 생성 API 상세 주소 없이 성공`() {
         val request =
             CreateDeliveryRequest(
+                orderNo = "ORDER-002",
                 pickupAddress = "서울시 중구 세종대로 110",
                 pickupAddressDetail = null,
                 pickupLatitude = 37.5665,
@@ -124,6 +156,14 @@ class DeliveryControllerTest : ControllerTestSupport() {
                 deliveryLatitude = 37.5087,
                 deliveryLongitude = 127.0632,
                 phoneNumber = "010-1234-5678",
+                items = listOf(
+                    OrderItemRequest(
+                        name = "테스트 상품",
+                        price = BigDecimal("10000"),
+                        quantity = 1,
+                        volume = 1.0,
+                    ),
+                ),
             )
 
         val deliveryId = DeliveryId(2L)
@@ -413,5 +453,49 @@ class DeliveryControllerTest : ControllerTestSupport() {
             .andExpect(jsonPath("$.previousRobotId").isEmpty)
             .andExpect(jsonPath("$.newRobotId").value(newRobotId))
             .andExpect(jsonPath("$.message").value("로봇이 배차되었습니다."))
+    }
+
+    @Test
+    @DisplayName("추가 배달 생성 API - 성공")
+    fun `추가 배달 생성 API 성공`() {
+        val orderNo = "ORDER-001"
+        val request = CreateAdditionalDeliveryRequest(orderNo = orderNo)
+
+        val deliveryId = DeliveryId(3L)
+        given(deliveryService.createAdditionalDelivery(OrderNo(orderNo))).willReturn(deliveryId)
+
+        mockMvc
+            .perform(
+                post("/api/deliveries/additional")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request)),
+            ).andExpect(status().isCreated)
+            .andExpect(header().string("Location", "/api/deliveries/3"))
+            .andExpect(jsonPath("$.deliveryId").value(3))
+            .andExpect(jsonPath("$.orderNo").value(orderNo))
+            .andExpect(jsonPath("$.message").value("추가 배달이 성공적으로 생성되었습니다."))
+            .andDo(
+                document(
+                    "delivery-create-additional",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    requestFields(
+                        fieldWithPath("orderNo")
+                            .type(JsonFieldType.STRING)
+                            .description("주문 번호"),
+                    ),
+                    responseFields(
+                        fieldWithPath("deliveryId")
+                            .type(JsonFieldType.NUMBER)
+                            .description("생성된 배달 ID"),
+                        fieldWithPath("orderNo")
+                            .type(JsonFieldType.STRING)
+                            .description("주문 번호"),
+                        fieldWithPath("message")
+                            .type(JsonFieldType.STRING)
+                            .description("응답 메시지"),
+                    ),
+                ),
+            )
     }
 }
