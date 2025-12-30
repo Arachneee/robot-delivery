@@ -4,9 +4,11 @@ import com.robotdelivery.domain.common.BaseEntity
 import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.common.Volume
 import com.robotdelivery.domain.robot.event.RobotBecameAvailableEvent
 import com.robotdelivery.domain.robot.event.RobotDestinationChangedEvent
 import com.robotdelivery.infrastructure.persistence.converter.DeliveryIdConverter
+import com.robotdelivery.infrastructure.persistence.converter.VolumeConverter
 import jakarta.persistence.AttributeOverride
 import jakarta.persistence.AttributeOverrides
 import jakarta.persistence.Column
@@ -44,6 +46,9 @@ class Robot(
         AttributeOverride(name = "longitude", column = Column(name = "destination_longitude", nullable = true)),
     )
     var destination: Location? = null,
+    @Column(name = "capacity", nullable = true)
+    @Convert(converter = VolumeConverter::class)
+    val capacity: Volume? = null,
 ) : BaseEntity<Robot>() {
     fun startDuty() {
         check(status.canTransitionTo(RobotStatus.READY)) {
@@ -131,6 +136,11 @@ class Robot(
     }
 
     fun isAvailableForDelivery(): Boolean = status.isAvailableForDelivery() && currentDeliveryId == null
+
+    fun canLoad(volume: Volume): Boolean {
+        val robotCapacity = capacity ?: return true
+        return robotCapacity >= volume
+    }
 
     fun getRobotId(): RobotId = RobotId(id)
 

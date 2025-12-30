@@ -2,6 +2,7 @@ package com.robotdelivery.domain.robot
 
 import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.common.Location
+import com.robotdelivery.domain.common.Volume
 import com.robotdelivery.domain.robot.event.RobotApproachingEvent
 import com.robotdelivery.domain.robot.event.RobotArrivedEvent
 import com.robotdelivery.domain.robot.event.RobotBecameAvailableEvent
@@ -21,6 +22,7 @@ class RobotTest {
         drivingStatus: RobotDrivingStatus = RobotDrivingStatus.ARRIVED,
         currentDeliveryId: DeliveryId? = null,
         destination: Location? = null,
+        capacity: Volume? = null,
     ): Robot =
         Robot(
             id = id,
@@ -29,6 +31,7 @@ class RobotTest {
             drivingStatus = drivingStatus,
             currentDeliveryId = currentDeliveryId,
             destination = destination,
+            capacity = capacity,
         )
 
     @Nested
@@ -476,6 +479,42 @@ class RobotTest {
             assertThatThrownBy { robot.navigateTo(destination) }
                 .isInstanceOf(IllegalStateException::class.java)
                 .hasMessageContaining("배달 수행 중이 아닙니다")
+        }
+    }
+
+    @Nested
+    @DisplayName("적재 가능 여부 테스트")
+    inner class CanLoadTest {
+        @Test
+        @DisplayName("용량이 충분하면 적재 가능하다")
+        fun `용량이 충분하면 적재 가능하다`() {
+            val robot = createRobot(capacity = Volume(100.0))
+
+            assertThat(robot.canLoad(Volume(50.0))).isTrue()
+        }
+
+        @Test
+        @DisplayName("용량이 같으면 적재 가능하다")
+        fun `용량이 같으면 적재 가능하다`() {
+            val robot = createRobot(capacity = Volume(100.0))
+
+            assertThat(robot.canLoad(Volume(100.0))).isTrue()
+        }
+
+        @Test
+        @DisplayName("용량이 부족하면 적재 불가능하다")
+        fun `용량이 부족하면 적재 불가능하다`() {
+            val robot = createRobot(capacity = Volume(50.0))
+
+            assertThat(robot.canLoad(Volume(100.0))).isFalse()
+        }
+
+        @Test
+        @DisplayName("용량이 설정되지 않으면 항상 적재 가능하다")
+        fun `용량이 설정되지 않으면 항상 적재 가능하다`() {
+            val robot = createRobot(capacity = null)
+
+            assertThat(robot.canLoad(Volume(1000.0))).isTrue()
         }
     }
 }
