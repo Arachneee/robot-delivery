@@ -16,9 +16,11 @@ import com.robotdelivery.domain.delivery.event.DeliveryRobotAssignedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryRobotReassignedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryRobotUnassignedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryStartedEvent
+import com.robotdelivery.infrastructure.persistence.converter.RobotIdConverter
 import jakarta.persistence.AttributeOverride
 import jakarta.persistence.AttributeOverrides
 import jakarta.persistence.Column
+import jakarta.persistence.Convert
 import jakarta.persistence.Embedded
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -59,6 +61,7 @@ class Delivery(
     @Column(nullable = false)
     var status: DeliveryStatus = DeliveryStatus.PENDING,
     @Column(name = "assigned_robot_id", nullable = true)
+    @Convert(converter = RobotIdConverter::class)
     var assignedRobotId: RobotId? = null,
 ) : BaseEntity<Delivery>() {
     @Transient

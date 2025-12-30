@@ -6,9 +6,11 @@ import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.common.RobotId
 import com.robotdelivery.domain.robot.event.RobotBecameAvailableEvent
 import com.robotdelivery.domain.robot.event.RobotDestinationChangedEvent
+import com.robotdelivery.infrastructure.persistence.converter.DeliveryIdConverter
 import jakarta.persistence.AttributeOverride
 import jakarta.persistence.AttributeOverrides
 import jakarta.persistence.Column
+import jakarta.persistence.Convert
 import jakarta.persistence.Embedded
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -34,6 +36,7 @@ class Robot(
     @Column(nullable = false)
     var drivingStatus: RobotDrivingStatus = RobotDrivingStatus.ARRIVED,
     @Column(name = "current_delivery_id", nullable = true)
+    @Convert(converter = DeliveryIdConverter::class)
     var currentDeliveryId: DeliveryId? = null,
     @Embedded
     @AttributeOverrides(
