@@ -4,7 +4,9 @@ package com.robotdelivery.domain.delivery
 
 import com.robotdelivery.domain.common.BaseEntity
 import com.robotdelivery.domain.common.DeliveryId
+import com.robotdelivery.domain.common.OrderId
 import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.common.Volume
 import com.robotdelivery.domain.delivery.event.DeliveryApproachingEvent
 import com.robotdelivery.domain.delivery.event.DeliveryArrivedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryCanceledEvent
@@ -16,7 +18,9 @@ import com.robotdelivery.domain.delivery.event.DeliveryRobotAssignedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryRobotReassignedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryRobotUnassignedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryStartedEvent
+import com.robotdelivery.infrastructure.persistence.converter.OrderIdConverter
 import com.robotdelivery.infrastructure.persistence.converter.RobotIdConverter
+import com.robotdelivery.infrastructure.persistence.converter.VolumeConverter
 import jakarta.persistence.AttributeOverride
 import jakarta.persistence.AttributeOverrides
 import jakarta.persistence.Column
@@ -63,6 +67,12 @@ class Delivery(
     @Column(name = "assigned_robot_id", nullable = true)
     @Convert(converter = RobotIdConverter::class)
     var assignedRobotId: RobotId? = null,
+    @Column(name = "order_id", nullable = true)
+    @Convert(converter = OrderIdConverter::class)
+    val orderId: OrderId? = null,
+    @Column(name = "total_volume", nullable = true)
+    @Convert(converter = VolumeConverter::class)
+    val totalVolume: Volume? = null,
 ) : BaseEntity<Delivery>() {
     @Transient
     internal var isNew: Boolean = (id == 0L)
