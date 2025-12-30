@@ -2,10 +2,13 @@ package com.robotdelivery.view.delivery
 
 import com.robotdelivery.application.command.DeliveryService
 import com.robotdelivery.domain.common.DeliveryId
+import com.robotdelivery.domain.common.OrderNo
 import com.robotdelivery.domain.common.RobotId
 import com.robotdelivery.view.delivery.dto.CancelDeliveryResponse
 import com.robotdelivery.view.delivery.dto.CompleteDeliveryResponse
 import com.robotdelivery.view.delivery.dto.CompleteReturnResponse
+import com.robotdelivery.view.delivery.dto.CreateAdditionalDeliveryRequest
+import com.robotdelivery.view.delivery.dto.CreateAdditionalDeliveryResponse
 import com.robotdelivery.view.delivery.dto.CreateDeliveryRequest
 import com.robotdelivery.view.delivery.dto.CreateDeliveryResponse
 import com.robotdelivery.view.delivery.dto.OpenDoorResponse
@@ -33,6 +36,22 @@ class DeliveryController(
         val deliveryId = deliveryService.createDelivery(request.toCommand())
 
         val response = CreateDeliveryResponse(deliveryId = deliveryId.value)
+
+        return ResponseEntity
+            .created(URI.create("/api/deliveries/${deliveryId.value}"))
+            .body(response)
+    }
+
+    @PostMapping("/additional")
+    fun createAdditionalDelivery(
+        @RequestBody request: CreateAdditionalDeliveryRequest,
+    ): ResponseEntity<CreateAdditionalDeliveryResponse> {
+        val deliveryId = deliveryService.createAdditionalDelivery(OrderNo(request.orderNo))
+
+        val response = CreateAdditionalDeliveryResponse(
+            deliveryId = deliveryId.value,
+            orderNo = request.orderNo,
+        )
 
         return ResponseEntity
             .created(URI.create("/api/deliveries/${deliveryId.value}"))
