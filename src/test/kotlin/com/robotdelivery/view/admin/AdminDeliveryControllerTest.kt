@@ -1,14 +1,13 @@
 package com.robotdelivery.view.admin
 
-import com.robotdelivery.application.DeliveryService
-import com.robotdelivery.application.command.ChangeStatusResult
+import com.robotdelivery.application.command.DeliveryService
+import com.robotdelivery.application.command.vo.ChangeStatusResult
 import com.robotdelivery.config.ControllerTestSupport
 import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.delivery.DeliveryStatus
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.whenever
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document
 import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest

@@ -1,6 +1,6 @@
 package com.robotdelivery.view.delivery
 
-import com.robotdelivery.application.DeliveryService
+import com.robotdelivery.application.command.DeliveryService
 import com.robotdelivery.config.ControllerTestSupport
 import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.common.RobotId
@@ -12,7 +12,6 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.doNothing
 import org.mockito.kotlin.given
 import org.mockito.kotlin.whenever
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.http.MediaType
 import org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document
 import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post

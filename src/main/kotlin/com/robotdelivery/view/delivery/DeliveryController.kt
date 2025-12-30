@@ -1,6 +1,6 @@
 package com.robotdelivery.view.delivery
 
-import com.robotdelivery.application.DeliveryService
+import com.robotdelivery.application.command.DeliveryService
 import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.common.RobotId
 import com.robotdelivery.view.delivery.dto.CancelDeliveryResponse

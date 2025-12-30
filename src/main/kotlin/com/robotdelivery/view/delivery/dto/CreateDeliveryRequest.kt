@@ -1,7 +1,7 @@
 package com.robotdelivery.view.delivery.dto
 
-import com.robotdelivery.application.command.CreateDeliveryCommand
-import com.robotdelivery.application.command.DestinationInfo
+import com.robotdelivery.application.command.vo.CreateDeliveryCommand
+import com.robotdelivery.application.command.vo.DestinationInfo
 
 data class CreateDeliveryRequest(
     val pickupAddress: String,

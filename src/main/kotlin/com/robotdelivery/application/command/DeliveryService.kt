@@ -1,8 +1,8 @@
-package com.robotdelivery.application
+package com.robotdelivery.application.command
 
 import com.robotdelivery.application.client.RobotClient
-import com.robotdelivery.application.command.ChangeStatusResult
-import com.robotdelivery.application.command.CreateDeliveryCommand
+import com.robotdelivery.application.command.vo.ChangeStatusResult
+import com.robotdelivery.application.command.vo.CreateDeliveryCommand
 import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.common.RobotId
 import com.robotdelivery.domain.delivery.DeliveryRepository
@@ -20,11 +20,11 @@ class DeliveryService(
     private val robotRepository: RobotRepository,
     private val robotClient: RobotClient,
 ) {
-    fun createDelivery(command: CreateDeliveryCommand): DeliveryId {
-        val delivery = command.toDelivery()
-        val savedDelivery = deliveryRepository.saveAndFlush(delivery)
-        return savedDelivery.getDeliveryId()
-    }
+    fun createDelivery(command: CreateDeliveryCommand): DeliveryId =
+        command
+            .toDelivery()
+            .let { deliveryRepository.saveAndFlush(it) }
+            .getDeliveryId()
 
     fun startDelivery(deliveryId: DeliveryId) {
         val delivery = deliveryRepository.getById(deliveryId)
@@ -61,25 +61,19 @@ class DeliveryService(
 
     fun cancelDelivery(deliveryId: DeliveryId): Boolean {
         val delivery = deliveryRepository.getById(deliveryId)
-
         val requiresReturn = delivery.status.requiresReturn()
 
         delivery.cancel()
 
-        val robotId = delivery.assignedRobotId
-        if (robotId != null) {
-            val robot = robotRepository.getById(robotId)
-
-            if (requiresReturn) {
-                robot.navigateTo(delivery.getCurrentDestination().location)
-            } else {
-                robot.completeDelivery()
-            }
-            robotRepository.save(robot)
+        delivery.assignedRobotId?.let { robotId ->
+            robotRepository
+                .getById(robotId)
+                .apply {
+                    if (requiresReturn) navigateTo(delivery.getCurrentDestination().location) else completeDelivery()
+                }.also { robotRepository.save(it) }
         }
 
         deliveryRepository.save(delivery)
-
         return requiresReturn
     }
 
@@ -101,21 +95,15 @@ class DeliveryService(
         val delivery = deliveryRepository.getById(deliveryId)
         val previousRobotId = delivery.assignedRobotId
 
-        val newRobot = robotRepository.getById(newRobotId)
-        check(newRobot.isAvailableForDelivery()) {
-            "새 로봇이 배차 가능한 상태가 아닙니다."
-        }
+        val newRobot =
+            robotRepository.getById(newRobotId).also {
+                check(it.isAvailableForDelivery()) { "새 로봇이 배차 가능한 상태가 아닙니다." }
+            }
 
-        if (previousRobotId == null) {
-            delivery.assignRobot(newRobotId)
-        } else {
+        previousRobotId?.let { prevId ->
             delivery.reassignRobot(newRobotId)
-
-            val previousRobot = robotRepository.getById(previousRobotId)
-            previousRobot.unassignDelivery()
-
-            robotRepository.save(previousRobot)
-        }
+            robotRepository.getById(prevId).apply { unassignDelivery() }.also { robotRepository.save(it) }
+        } ?: delivery.assignRobot(newRobotId)
 
         newRobot.assignDelivery(deliveryId, delivery.getCurrentDestination().location)
 

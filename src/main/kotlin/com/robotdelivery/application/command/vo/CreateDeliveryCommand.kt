@@ -1,4 +1,4 @@
-package com.robotdelivery.application.command
+package com.robotdelivery.application.command.vo
 
 import com.robotdelivery.domain.common.Location
 import com.robotdelivery.domain.delivery.Delivery

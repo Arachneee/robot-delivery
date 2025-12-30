@@ -1,8 +1,9 @@
 package com.robotdelivery.application
 
 import com.robotdelivery.application.client.RobotClient
-import com.robotdelivery.application.command.CreateDeliveryCommand
-import com.robotdelivery.application.command.DestinationInfo
+import com.robotdelivery.application.command.DeliveryService
+import com.robotdelivery.application.command.vo.CreateDeliveryCommand
+import com.robotdelivery.application.command.vo.DestinationInfo
 import com.robotdelivery.config.IntegrationTestSupport
 import com.robotdelivery.domain.common.DeliveryId
 import com.robotdelivery.domain.common.Location
