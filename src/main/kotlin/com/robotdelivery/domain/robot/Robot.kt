@@ -33,8 +33,7 @@ class Robot(
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     var drivingStatus: RobotDrivingStatus = RobotDrivingStatus.ARRIVED,
-    @Embedded
-    @AttributeOverride(name = "value", column = Column(name = "current_delivery_id", nullable = true))
+    @Column(name = "current_delivery_id", nullable = true)
     var currentDeliveryId: DeliveryId? = null,
     @Embedded
     @AttributeOverrides(

@@ -1,11 +1,7 @@
 package com.robotdelivery.domain.common
 
-import jakarta.persistence.Embeddable
-
-@Embeddable
-data class RobotId(
-    val value: Long,
-) {
+@JvmInline
+value class RobotId(val value: Long) {
     init {
         require(value > 0) { "RobotId는 0보다 커야 합니다: $value" }
     }
