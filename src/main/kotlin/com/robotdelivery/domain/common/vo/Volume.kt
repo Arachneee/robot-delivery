@@ -1,7 +1,9 @@
-package com.robotdelivery.domain.common
+package com.robotdelivery.domain.common.vo
 
 @JvmInline
-value class Volume(val value: Double) {
+value class Volume(
+    val value: Double,
+) {
     init {
         require(value >= 0) { "Volume은 0 이상이어야 합니다: $value" }
     }
@@ -18,4 +20,3 @@ value class Volume(val value: Double) {
         val ZERO = Volume(0.0)
     }
 }
-

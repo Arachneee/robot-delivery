@@ -1,6 +1,6 @@
 package com.robotdelivery.infrastructure.persistence.converter
 
-import com.robotdelivery.domain.common.Volume
+import com.robotdelivery.domain.common.vo.Volume
 import jakarta.persistence.AttributeConverter
 import jakarta.persistence.Converter
 
@@ -10,4 +10,3 @@ class VolumeConverter : AttributeConverter<Volume?, Double?> {
 
     override fun convertToEntityAttribute(dbData: Double?): Volume? = dbData?.let { Volume(it) }
 }
-

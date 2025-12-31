@@ -1,6 +1,6 @@
 package com.robotdelivery.application.eventhandler
 
-import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.common.vo.RobotId
 import com.robotdelivery.domain.delivery.Delivery
 import com.robotdelivery.domain.delivery.DeliveryRepository
 import com.robotdelivery.domain.robot.RobotRepository

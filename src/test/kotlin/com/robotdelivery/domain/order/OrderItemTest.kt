@@ -1,6 +1,6 @@
 package com.robotdelivery.domain.order
 
-import com.robotdelivery.domain.common.Volume
+import com.robotdelivery.domain.common.vo.Volume
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.DisplayName
@@ -16,12 +16,13 @@ class OrderItemTest {
         @Test
         @DisplayName("유효한 값으로 OrderItem을 생성할 수 있다")
         fun `유효한 값으로 OrderItem을 생성할 수 있다`() {
-            val orderItem = OrderItem(
-                name = "테스트 상품",
-                price = BigDecimal("10000"),
-                quantity = 2,
-                volume = 5.0,
-            )
+            val orderItem =
+                OrderItem(
+                    name = "테스트 상품",
+                    price = BigDecimal("10000"),
+                    quantity = 2,
+                    volume = 5.0,
+                )
 
             assertThat(orderItem.name).isEqualTo("테스트 상품")
             assertThat(orderItem.price).isEqualTo(BigDecimal("10000"))
@@ -39,8 +40,7 @@ class OrderItemTest {
                     quantity = 1,
                     volume = 1.0,
                 )
-            }
-                .isInstanceOf(IllegalArgumentException::class.java)
+            }.isInstanceOf(IllegalArgumentException::class.java)
                 .hasMessageContaining("물품 이름은 비어있을 수 없습니다")
         }
 
@@ -54,8 +54,7 @@ class OrderItemTest {
                     quantity = 1,
                     volume = 1.0,
                 )
-            }
-                .isInstanceOf(IllegalArgumentException::class.java)
+            }.isInstanceOf(IllegalArgumentException::class.java)
                 .hasMessageContaining("가격은 0 이상이어야 합니다")
         }
 
@@ -69,8 +68,7 @@ class OrderItemTest {
                     quantity = 0,
                     volume = 1.0,
                 )
-            }
-                .isInstanceOf(IllegalArgumentException::class.java)
+            }.isInstanceOf(IllegalArgumentException::class.java)
                 .hasMessageContaining("수량은 1 이상이어야 합니다")
         }
 
@@ -84,8 +82,7 @@ class OrderItemTest {
                     quantity = 1,
                     volume = -1.0,
                 )
-            }
-                .isInstanceOf(IllegalArgumentException::class.java)
+            }.isInstanceOf(IllegalArgumentException::class.java)
                 .hasMessageContaining("부피는 0 이상이어야 합니다")
         }
     }
@@ -96,12 +93,13 @@ class OrderItemTest {
         @Test
         @DisplayName("수량이 1일 때 부피를 반환한다")
         fun `수량이 1일 때 부피를 반환한다`() {
-            val orderItem = OrderItem(
-                name = "테스트 상품",
-                price = BigDecimal("10000"),
-                quantity = 1,
-                volume = 5.0,
-            )
+            val orderItem =
+                OrderItem(
+                    name = "테스트 상품",
+                    price = BigDecimal("10000"),
+                    quantity = 1,
+                    volume = 5.0,
+                )
 
             val totalVolume = orderItem.calculateTotalVolume()
 
@@ -111,12 +109,13 @@ class OrderItemTest {
         @Test
         @DisplayName("수량이 여러 개일 때 부피 x 수량을 반환한다")
         fun `수량이 여러 개일 때 부피 x 수량을 반환한다`() {
-            val orderItem = OrderItem(
-                name = "테스트 상품",
-                price = BigDecimal("10000"),
-                quantity = 3,
-                volume = 5.0,
-            )
+            val orderItem =
+                OrderItem(
+                    name = "테스트 상품",
+                    price = BigDecimal("10000"),
+                    quantity = 3,
+                    volume = 5.0,
+                )
 
             val totalVolume = orderItem.calculateTotalVolume()
 
@@ -124,4 +123,3 @@ class OrderItemTest {
         }
     }
 }
-

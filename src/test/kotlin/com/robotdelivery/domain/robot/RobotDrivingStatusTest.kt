@@ -1,9 +1,10 @@
 package com.robotdelivery.domain.robot
 
-import com.robotdelivery.domain.common.Location
-import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.common.vo.Location
+import com.robotdelivery.domain.common.vo.RobotId
 import com.robotdelivery.domain.robot.event.RobotApproachingEvent
 import com.robotdelivery.domain.robot.event.RobotArrivedEvent
+import com.robotdelivery.domain.robot.vo.RobotDrivingStatus
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -159,4 +160,3 @@ class RobotDrivingStatusTest {
         }
     }
 }
-

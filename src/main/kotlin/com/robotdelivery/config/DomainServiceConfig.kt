@@ -4,6 +4,7 @@ import com.robotdelivery.domain.delivery.DeliveryAssignmentService
 import com.robotdelivery.domain.delivery.DeliveryRepository
 import com.robotdelivery.domain.robot.RobotAvailabilityService
 import com.robotdelivery.domain.robot.RobotIotStateRepository
+import com.robotdelivery.domain.robot.RobotMapClient
 import com.robotdelivery.domain.robot.RobotRepository
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -18,8 +19,9 @@ class DomainServiceConfig {
 
     @Bean
     fun deliveryAssignmentService(
-        robotRepository: RobotRepository,
         deliveryRepository: DeliveryRepository,
         robotAvailabilityService: RobotAvailabilityService,
-    ): DeliveryAssignmentService = DeliveryAssignmentService(robotRepository, deliveryRepository, robotAvailabilityService)
+        robotMapClient: RobotMapClient,
+    ): DeliveryAssignmentService =
+        DeliveryAssignmentService(deliveryRepository, robotAvailabilityService, robotMapClient)
 }

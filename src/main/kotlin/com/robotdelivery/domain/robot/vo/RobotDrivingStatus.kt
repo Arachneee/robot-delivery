@@ -1,7 +1,8 @@
-package com.robotdelivery.domain.robot
+package com.robotdelivery.domain.robot.vo
 
-import com.robotdelivery.domain.common.Location
-import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.common.vo.Location
+import com.robotdelivery.domain.common.vo.RobotId
+import com.robotdelivery.domain.robot.RobotEventFactory
 import com.robotdelivery.domain.robot.event.RobotApproachingEvent
 import com.robotdelivery.domain.robot.event.RobotArrivedEvent
 import com.robotdelivery.domain.robot.event.RobotEvent

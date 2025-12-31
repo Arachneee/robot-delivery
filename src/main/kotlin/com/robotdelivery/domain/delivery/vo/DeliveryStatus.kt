@@ -1,4 +1,4 @@
-package com.robotdelivery.domain.delivery
+package com.robotdelivery.domain.delivery.vo
 
 import java.util.EnumSet
 

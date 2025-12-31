@@ -1,5 +1,6 @@
 package com.robotdelivery.domain.common
 
+import com.robotdelivery.domain.common.vo.Volume
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.DisplayName
@@ -99,4 +100,3 @@ class VolumeTest {
         }
     }
 }
-

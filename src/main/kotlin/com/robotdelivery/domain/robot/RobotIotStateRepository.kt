@@ -1,6 +1,6 @@
 package com.robotdelivery.domain.robot
 
-import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.common.vo.RobotId
 
 interface RobotIotStateRepository {
     fun save(state: RobotIotState)

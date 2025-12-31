@@ -1,4 +1,4 @@
-package com.robotdelivery.domain.common
+package com.robotdelivery.domain.common.vo
 
 import jakarta.persistence.Embeddable
 import kotlin.math.atan2

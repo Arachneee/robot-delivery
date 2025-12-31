@@ -1,6 +1,6 @@
 package com.robotdelivery.infrastructure.persistence
 
-import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.common.vo.RobotId
 import com.robotdelivery.domain.robot.RobotIotState
 import com.robotdelivery.domain.robot.RobotIotStateRepository
 import org.springframework.stereotype.Repository

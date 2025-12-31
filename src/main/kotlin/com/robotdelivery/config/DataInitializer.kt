@@ -1,6 +1,6 @@
 package com.robotdelivery.config
 
-import com.robotdelivery.domain.common.Location
+import com.robotdelivery.domain.common.vo.Location
 import com.robotdelivery.domain.robot.Robot
 import com.robotdelivery.domain.robot.RobotIotState
 import com.robotdelivery.domain.robot.RobotIotStateRepository

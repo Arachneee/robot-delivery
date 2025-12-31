@@ -1,9 +1,10 @@
 package com.robotdelivery.domain.order
 
-import com.robotdelivery.domain.common.OrderId
-import com.robotdelivery.domain.common.OrderNo
-import com.robotdelivery.domain.common.Volume
-import com.robotdelivery.domain.delivery.Destination
+import com.robotdelivery.domain.common.BaseEntity
+import com.robotdelivery.domain.common.vo.OrderId
+import com.robotdelivery.domain.common.vo.OrderNo
+import com.robotdelivery.domain.common.vo.Volume
+import com.robotdelivery.domain.delivery.vo.Destination
 import jakarta.persistence.AttributeOverride
 import jakarta.persistence.AttributeOverrides
 import jakarta.persistence.CollectionTable
@@ -50,7 +51,7 @@ class Order(
         joinColumns = [JoinColumn(name = "order_id")],
     )
     val items: List<OrderItem> = emptyList(),
-) {
+) : BaseEntity<Order>() {
     @Column(name = "order_no", nullable = false, unique = true)
     private val _orderNo: String = orderNo.value
 

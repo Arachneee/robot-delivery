@@ -1,12 +1,14 @@
 package com.robotdelivery.domain.robot
 
 import com.robotdelivery.domain.common.BaseEntity
-import com.robotdelivery.domain.common.DeliveryId
-import com.robotdelivery.domain.common.Location
-import com.robotdelivery.domain.common.RobotId
-import com.robotdelivery.domain.common.Volume
+import com.robotdelivery.domain.common.vo.DeliveryId
+import com.robotdelivery.domain.common.vo.Location
+import com.robotdelivery.domain.common.vo.RobotId
+import com.robotdelivery.domain.common.vo.Volume
 import com.robotdelivery.domain.robot.event.RobotBecameAvailableEvent
 import com.robotdelivery.domain.robot.event.RobotDestinationChangedEvent
+import com.robotdelivery.domain.robot.vo.RobotDrivingStatus
+import com.robotdelivery.domain.robot.vo.RobotStatus
 import com.robotdelivery.infrastructure.persistence.converter.DeliveryIdConverter
 import com.robotdelivery.infrastructure.persistence.converter.VolumeConverter
 import jakarta.persistence.AttributeOverride

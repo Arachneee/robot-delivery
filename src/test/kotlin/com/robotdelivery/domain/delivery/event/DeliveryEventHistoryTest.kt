@@ -1,23 +1,25 @@
 package com.robotdelivery.domain.delivery.event
 
-import com.robotdelivery.domain.common.DeliveryId
-import com.robotdelivery.domain.common.Location
-import com.robotdelivery.domain.common.RobotId
-import com.robotdelivery.domain.delivery.DestinationType
+import com.robotdelivery.domain.common.vo.DeliveryId
+import com.robotdelivery.domain.common.vo.Location
+import com.robotdelivery.domain.common.vo.RobotId
+import com.robotdelivery.domain.delivery.vo.DestinationType
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import java.time.Duration
 
 @DisplayName("DeliveryEventHistory 테스트")
 class DeliveryEventHistoryTest {
     @Test
     @DisplayName("DeliveryCreatedEvent로부터 이력을 생성한다")
     fun `DeliveryCreatedEvent로부터 이력을 생성한다`() {
-        val event = DeliveryCreatedEvent(
-            deliveryId = DeliveryId(1L),
-            pickupLocation = Location(37.5665, 126.9780),
-            deliveryLocation = Location(37.4979, 127.0276),
-        )
+        val event =
+            DeliveryCreatedEvent(
+                deliveryId = DeliveryId(1L),
+                pickupLocation = Location(37.5665, 126.9780),
+                deliveryLocation = Location(37.4979, 127.0276),
+            )
 
         val history = DeliveryEventHistory.from(event)
 
@@ -30,11 +32,14 @@ class DeliveryEventHistoryTest {
     @Test
     @DisplayName("DeliveryRobotAssignedEvent로부터 로봇 ID를 포함한 이력을 생성한다")
     fun `DeliveryRobotAssignedEvent로부터 로봇 ID를 포함한 이력을 생성한다`() {
-        val event = DeliveryRobotAssignedEvent(
-            deliveryId = DeliveryId(2L),
-            robotId = RobotId(5L),
-            pickupLocation = Location(37.5665, 126.9780),
-        )
+        val event =
+            DeliveryRobotAssignedEvent(
+                deliveryId = DeliveryId(2L),
+                robotId = RobotId(5L),
+                pickupLocation = Location(37.5665, 126.9780),
+                estimatedPickupDuration = Duration.ofSeconds(300),
+                estimatedDeliveryDuration = Duration.ofSeconds(600),
+            )
 
         val history = DeliveryEventHistory.from(event)
 
@@ -47,10 +52,11 @@ class DeliveryEventHistoryTest {
     @Test
     @DisplayName("DeliveryStartedEvent로부터 이력을 생성한다")
     fun `DeliveryStartedEvent로부터 이력을 생성한다`() {
-        val event = DeliveryStartedEvent(
-            deliveryId = DeliveryId(3L),
-            robotId = RobotId(7L),
-        )
+        val event =
+            DeliveryStartedEvent(
+                deliveryId = DeliveryId(3L),
+                robotId = RobotId(7L),
+            )
 
         val history = DeliveryEventHistory.from(event)
 
@@ -62,10 +68,11 @@ class DeliveryEventHistoryTest {
     @Test
     @DisplayName("DeliveryCompletedEvent로부터 이력을 생성한다")
     fun `DeliveryCompletedEvent로부터 이력을 생성한다`() {
-        val event = DeliveryCompletedEvent(
-            deliveryId = DeliveryId(4L),
-            robotId = RobotId(8L),
-        )
+        val event =
+            DeliveryCompletedEvent(
+                deliveryId = DeliveryId(4L),
+                robotId = RobotId(8L),
+            )
 
         val history = DeliveryEventHistory.from(event)
 
@@ -77,11 +84,12 @@ class DeliveryEventHistoryTest {
     @Test
     @DisplayName("DeliveryCanceledEvent에 로봇 ID가 있으면 포함하여 이력을 생성한다")
     fun `DeliveryCanceledEvent에 로봇 ID가 있으면 포함하여 이력을 생성한다`() {
-        val event = DeliveryCanceledEvent(
-            deliveryId = DeliveryId(5L),
-            robotId = RobotId(9L),
-            requiresReturn = true,
-        )
+        val event =
+            DeliveryCanceledEvent(
+                deliveryId = DeliveryId(5L),
+                robotId = RobotId(9L),
+                requiresReturn = true,
+            )
 
         val history = DeliveryEventHistory.from(event)
 
@@ -93,11 +101,12 @@ class DeliveryEventHistoryTest {
     @Test
     @DisplayName("DeliveryCanceledEvent에 로봇 ID가 없으면 null로 이력을 생성한다")
     fun `DeliveryCanceledEvent에 로봇 ID가 없으면 null로 이력을 생성한다`() {
-        val event = DeliveryCanceledEvent(
-            deliveryId = DeliveryId(6L),
-            robotId = null,
-            requiresReturn = false,
-        )
+        val event =
+            DeliveryCanceledEvent(
+                deliveryId = DeliveryId(6L),
+                robotId = null,
+                requiresReturn = false,
+            )
 
         val history = DeliveryEventHistory.from(event)
 
@@ -109,12 +118,13 @@ class DeliveryEventHistoryTest {
     @Test
     @DisplayName("DeliveryApproachingEvent로부터 이력을 생성한다")
     fun `DeliveryApproachingEvent로부터 이력을 생성한다`() {
-        val event = DeliveryApproachingEvent(
-            deliveryId = DeliveryId(7L),
-            robotId = RobotId(10L),
-            destination = Location(37.5665, 126.9780),
-            destinationType = DestinationType.PICKUP,
-        )
+        val event =
+            DeliveryApproachingEvent(
+                deliveryId = DeliveryId(7L),
+                robotId = RobotId(10L),
+                destination = Location(37.5665, 126.9780),
+                destinationType = DestinationType.PICKUP,
+            )
 
         val history = DeliveryEventHistory.from(event)
 
@@ -126,12 +136,13 @@ class DeliveryEventHistoryTest {
     @Test
     @DisplayName("DeliveryArrivedEvent로부터 이력을 생성한다")
     fun `DeliveryArrivedEvent로부터 이력을 생성한다`() {
-        val event = DeliveryArrivedEvent(
-            deliveryId = DeliveryId(8L),
-            robotId = RobotId(11L),
-            destination = Location(37.4979, 127.0276),
-            destinationType = DestinationType.DELIVERY,
-        )
+        val event =
+            DeliveryArrivedEvent(
+                deliveryId = DeliveryId(8L),
+                robotId = RobotId(11L),
+                destination = Location(37.4979, 127.0276),
+                destinationType = DestinationType.DELIVERY,
+            )
 
         val history = DeliveryEventHistory.from(event)
 
@@ -143,11 +154,12 @@ class DeliveryEventHistoryTest {
     @Test
     @DisplayName("DeliveryReturnStartedEvent로부터 이력을 생성한다")
     fun `DeliveryReturnStartedEvent로부터 이력을 생성한다`() {
-        val event = DeliveryReturnStartedEvent(
-            deliveryId = DeliveryId(9L),
-            robotId = RobotId(12L),
-            returnLocation = Location(37.5665, 126.9780),
-        )
+        val event =
+            DeliveryReturnStartedEvent(
+                deliveryId = DeliveryId(9L),
+                robotId = RobotId(12L),
+                returnLocation = Location(37.5665, 126.9780),
+            )
 
         val history = DeliveryEventHistory.from(event)
 
@@ -159,10 +171,11 @@ class DeliveryEventHistoryTest {
     @Test
     @DisplayName("DeliveryReturnCompletedEvent로부터 이력을 생성한다")
     fun `DeliveryReturnCompletedEvent로부터 이력을 생성한다`() {
-        val event = DeliveryReturnCompletedEvent(
-            deliveryId = DeliveryId(10L),
-            robotId = RobotId(13L),
-        )
+        val event =
+            DeliveryReturnCompletedEvent(
+                deliveryId = DeliveryId(10L),
+                robotId = RobotId(13L),
+            )
 
         val history = DeliveryEventHistory.from(event)
 
@@ -174,10 +187,11 @@ class DeliveryEventHistoryTest {
     @Test
     @DisplayName("DeliveryRobotUnassignedEvent로부터 이력을 생성한다")
     fun `DeliveryRobotUnassignedEvent로부터 이력을 생성한다`() {
-        val event = DeliveryRobotUnassignedEvent(
-            deliveryId = DeliveryId(11L),
-            robotId = RobotId(14L),
-        )
+        val event =
+            DeliveryRobotUnassignedEvent(
+                deliveryId = DeliveryId(11L),
+                robotId = RobotId(14L),
+            )
 
         val history = DeliveryEventHistory.from(event)
 
@@ -189,11 +203,12 @@ class DeliveryEventHistoryTest {
     @Test
     @DisplayName("DeliveryRobotReassignedEvent로부터 이력을 생성한다")
     fun `DeliveryRobotReassignedEvent로부터 이력을 생성한다`() {
-        val event = DeliveryRobotReassignedEvent(
-            deliveryId = DeliveryId(12L),
-            previousRobotId = RobotId(15L),
-            newRobotId = RobotId(16L),
-        )
+        val event =
+            DeliveryRobotReassignedEvent(
+                deliveryId = DeliveryId(12L),
+                previousRobotId = RobotId(15L),
+                newRobotId = RobotId(16L),
+            )
 
         val history = DeliveryEventHistory.from(event)
 
@@ -202,4 +217,3 @@ class DeliveryEventHistoryTest {
         assertThat(history.robotId).isEqualTo(16L)
     }
 }
-

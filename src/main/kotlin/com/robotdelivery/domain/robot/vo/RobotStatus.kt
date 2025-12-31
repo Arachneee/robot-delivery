@@ -1,4 +1,4 @@
-package com.robotdelivery.domain.robot
+package com.robotdelivery.domain.robot.vo
 
 enum class RobotStatus {
     READY,

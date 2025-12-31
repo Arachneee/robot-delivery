@@ -1,7 +1,7 @@
 package com.robotdelivery.domain.robot.event
 
-import com.robotdelivery.domain.common.Location
-import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.common.vo.Location
+import com.robotdelivery.domain.common.vo.RobotId
 import java.time.LocalDateTime
 import java.util.UUID
 

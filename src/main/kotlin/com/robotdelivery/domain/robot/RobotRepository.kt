@@ -1,6 +1,7 @@
 package com.robotdelivery.domain.robot
 
-import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.common.vo.RobotId
+import com.robotdelivery.domain.robot.vo.RobotStatus
 import org.springframework.data.jpa.repository.JpaRepository
 
 interface RobotRepository : JpaRepository<Robot, Long> {

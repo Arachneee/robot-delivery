@@ -1,11 +1,11 @@
 package com.robotdelivery.application.command.vo
 
-import com.robotdelivery.domain.common.Location
-import com.robotdelivery.domain.common.OrderId
-import com.robotdelivery.domain.common.OrderNo
-import com.robotdelivery.domain.common.Volume
+import com.robotdelivery.domain.common.vo.Location
+import com.robotdelivery.domain.common.vo.OrderId
+import com.robotdelivery.domain.common.vo.OrderNo
+import com.robotdelivery.domain.common.vo.Volume
 import com.robotdelivery.domain.delivery.Delivery
-import com.robotdelivery.domain.delivery.Destination
+import com.robotdelivery.domain.delivery.vo.Destination
 import com.robotdelivery.domain.order.Order
 import com.robotdelivery.domain.order.OrderItem
 import java.math.BigDecimal
@@ -26,7 +26,10 @@ data class CreateDeliveryCommand(
             items = items.map { it.toOrderItem() },
         )
 
-    fun toDelivery(orderId: OrderId, totalVolume: Volume): Delivery =
+    fun toDelivery(
+        orderId: OrderId,
+        totalVolume: Volume,
+    ): Delivery =
         Delivery(
             orderId = orderId,
             pickupDestination = pickupDestination.toDestination(),

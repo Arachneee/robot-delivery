@@ -1,8 +1,8 @@
 package com.robotdelivery.infrastructure.simulator
 
-import com.robotdelivery.application.client.RobotClient
-import com.robotdelivery.domain.common.Location
-import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.common.vo.Location
+import com.robotdelivery.domain.common.vo.RobotId
+import com.robotdelivery.domain.robot.RobotClient
 import com.robotdelivery.infrastructure.event.external.RobotIotUpdatedEvent
 import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher

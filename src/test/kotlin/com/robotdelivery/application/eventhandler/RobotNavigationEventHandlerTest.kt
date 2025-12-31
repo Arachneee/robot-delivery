@@ -1,8 +1,8 @@
 package com.robotdelivery.application.eventhandler
 
-import com.robotdelivery.application.client.RobotClient
-import com.robotdelivery.domain.common.Location
-import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.common.vo.Location
+import com.robotdelivery.domain.common.vo.RobotId
+import com.robotdelivery.domain.robot.RobotClient
 import com.robotdelivery.domain.robot.event.RobotDestinationChangedEvent
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -94,4 +94,3 @@ class RobotNavigationEventHandlerTest {
         }
     }
 }
-

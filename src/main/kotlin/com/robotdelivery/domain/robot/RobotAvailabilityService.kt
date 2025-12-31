@@ -1,37 +1,40 @@
 package com.robotdelivery.domain.robot
 
-import com.robotdelivery.domain.common.Location
-import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.common.vo.Location
+import com.robotdelivery.domain.common.vo.RobotId
+import com.robotdelivery.domain.robot.vo.AvailableRobotCandidate
 
 class RobotAvailabilityService(
     private val robotRepository: RobotRepository,
     private val iotStateRepository: RobotIotStateRepository,
 ) {
-    fun findNearestAvailableRobotId(
+    fun findAvailableCandidatesSortedByDistance(
         pickupLocation: Location,
         minimumBattery: Int = 20,
-    ): RobotId? {
+    ): List<AvailableRobotCandidate> {
         val iotStates =
             iotStateRepository
                 .findAll()
                 .asSequence()
                 .filter { it.hasSufficientBattery(minimumBattery) }
                 .toList()
-                .ifEmpty { return null }
+                .ifEmpty { return emptyList() }
 
-        val availableRobotIds =
+        val availableRobots =
             robotRepository
                 .findAllById(iotStates.map { it.robotId.value })
                 .asSequence()
                 .filter { it.isAvailableForDelivery() }
-                .map { it.getRobotId() }
-                .toSet()
+                .associateBy { it.getRobotId() }
 
         return iotStates
             .asSequence()
-            .filter { it.robotId in availableRobotIds }
-            .minByOrNull { it.distanceTo(pickupLocation) }
-            ?.robotId
+            .mapNotNull { iotState ->
+                availableRobots[iotState.robotId]?.let { robot ->
+                    AvailableRobotCandidate(robot, iotState)
+                }
+            }.sortedBy { it.iotState.distanceTo(pickupLocation) }
+            .toList()
     }
 
     fun findIotState(robotId: RobotId): RobotIotState? = iotStateRepository.findById(robotId)

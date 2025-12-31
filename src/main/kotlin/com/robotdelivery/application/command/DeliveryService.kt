@@ -1,18 +1,20 @@
 package com.robotdelivery.application.command
 
-import com.robotdelivery.application.client.RobotClient
 import com.robotdelivery.application.command.vo.ChangeStatusResult
 import com.robotdelivery.application.command.vo.CreateDeliveryCommand
-import com.robotdelivery.domain.common.DeliveryId
-import com.robotdelivery.domain.common.OrderNo
-import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.common.vo.DeliveryId
+import com.robotdelivery.domain.common.vo.OrderNo
+import com.robotdelivery.domain.common.vo.RobotId
 import com.robotdelivery.domain.delivery.Delivery
+import com.robotdelivery.domain.delivery.DeliveryAssignmentService
 import com.robotdelivery.domain.delivery.DeliveryRepository
-import com.robotdelivery.domain.delivery.DeliveryStatus
 import com.robotdelivery.domain.delivery.getById
+import com.robotdelivery.domain.delivery.vo.AssignmentResult
+import com.robotdelivery.domain.delivery.vo.DeliveryStatus
 import com.robotdelivery.domain.order.Order
 import com.robotdelivery.domain.order.OrderRepository
 import com.robotdelivery.domain.order.getByOrderNo
+import com.robotdelivery.domain.robot.RobotClient
 import com.robotdelivery.domain.robot.RobotRepository
 import com.robotdelivery.domain.robot.getById
 import org.springframework.stereotype.Service
@@ -25,6 +27,7 @@ class DeliveryService(
     private val orderRepository: OrderRepository,
     private val robotRepository: RobotRepository,
     private val robotClient: RobotClient,
+    private val deliveryAssignmentService: DeliveryAssignmentService,
 ) {
     fun createDelivery(command: CreateDeliveryCommand): DeliveryId {
         val order = command.toOrder()
@@ -43,13 +46,14 @@ class DeliveryService(
 
     private fun createDeliveryFromOrder(order: Order): DeliveryId {
         val totalVolume = order.calculateTotalVolume()
-        val delivery = Delivery(
-            orderId = order.getOrderId(),
-            pickupDestination = order.pickupDestination,
-            deliveryDestination = order.deliveryDestination,
-            phoneNumber = order.phoneNumber,
-            totalVolume = totalVolume,
-        )
+        val delivery =
+            Delivery(
+                orderId = order.getOrderId(),
+                pickupDestination = order.pickupDestination,
+                deliveryDestination = order.deliveryDestination,
+                phoneNumber = order.phoneNumber,
+                totalVolume = totalVolume,
+            )
 
         return deliveryRepository.saveAndFlush(delivery).getDeliveryId()
     }
@@ -122,21 +126,17 @@ class DeliveryService(
     ): RobotId? {
         val delivery = deliveryRepository.getById(deliveryId)
         val previousRobotId = delivery.assignedRobotId
+        val previousRobot = previousRobotId?.let { robotRepository.getById(it) }
+        val newRobot = robotRepository.getById(newRobotId)
 
-        val newRobot =
-            robotRepository.getById(newRobotId).also {
-                check(it.isAvailableForDelivery()) { "새 로봇이 배차 가능한 상태가 아닙니다." }
-            }
-
-        previousRobotId?.let { prevId ->
-            delivery.reassignRobot(newRobotId)
-            robotRepository.getById(prevId).apply { unassignDelivery() }.also { robotRepository.save(it) }
-        } ?: delivery.assignRobot(newRobotId)
-
-        newRobot.assignDelivery(deliveryId, delivery.getCurrentDestination().location)
+        val result = deliveryAssignmentService.assignSpecificRobotToDelivery(delivery, newRobot, previousRobot)
+        if (result is AssignmentResult.Failure) {
+            throw IllegalStateException(result.message)
+        }
 
         deliveryRepository.save(delivery)
         robotRepository.save(newRobot)
+        previousRobot?.let { robotRepository.save(it) }
 
         return previousRobotId
     }

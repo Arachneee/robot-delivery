@@ -1,25 +1,29 @@
 package com.robotdelivery.application
 
-import com.robotdelivery.application.client.RobotClient
 import com.robotdelivery.application.command.DeliveryService
 import com.robotdelivery.application.command.vo.CreateDeliveryCommand
 import com.robotdelivery.application.command.vo.DestinationInfo
 import com.robotdelivery.application.command.vo.OrderItemInfo
 import com.robotdelivery.config.IntegrationTestSupport
-import com.robotdelivery.domain.common.DeliveryId
-import com.robotdelivery.domain.common.Location
-import com.robotdelivery.domain.common.OrderNo
-import com.robotdelivery.domain.common.Volume
+import com.robotdelivery.domain.common.vo.DeliveryId
+import com.robotdelivery.domain.common.vo.Location
+import com.robotdelivery.domain.common.vo.OrderNo
+import com.robotdelivery.domain.common.vo.Volume
 import com.robotdelivery.domain.delivery.Delivery
 import com.robotdelivery.domain.delivery.DeliveryRepository
-import com.robotdelivery.domain.delivery.DeliveryStatus
-import com.robotdelivery.domain.delivery.Destination
+import com.robotdelivery.domain.delivery.vo.DeliveryStatus
+import com.robotdelivery.domain.delivery.vo.Destination
 import com.robotdelivery.domain.order.OrderRepository
 import com.robotdelivery.domain.order.getByOrderNo
 import com.robotdelivery.domain.robot.Robot
+import com.robotdelivery.domain.robot.RobotClient
+import com.robotdelivery.domain.robot.RobotIotState
+import com.robotdelivery.domain.robot.RobotIotStateRepository
 import com.robotdelivery.domain.robot.RobotRepository
-import com.robotdelivery.domain.robot.RobotStatus
 import com.robotdelivery.domain.robot.findById
+import com.robotdelivery.domain.robot.vo.RobotStatus
+import com.robotdelivery.domain.robot.vo.RouteResult
+import com.robotdelivery.infrastructure.persistence.InMemoryRobotIotStateRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
@@ -42,17 +46,23 @@ class DeliveryServiceTest : IntegrationTestSupport() {
     @Autowired
     private lateinit var robotRepository: RobotRepository
 
+    @Autowired
+    private lateinit var robotIotStateRepository: RobotIotStateRepository
+
     @MockitoBean
     private lateinit var robotClient: RobotClient
 
     @Autowired
     private lateinit var deliveryService: DeliveryService
 
+    private val defaultRouteResult = RouteResult.of(toPickupSeconds = 300, toDeliverySeconds = 600)
+
     @BeforeEach
     fun setUp() {
         deliveryRepository.deleteAll()
         orderRepository.deleteAll()
         robotRepository.deleteAll()
+        (robotIotStateRepository as InMemoryRobotIotStateRepository).deleteAll()
     }
 
     @Nested
@@ -972,7 +982,7 @@ class DeliveryServiceTest : IntegrationTestSupport() {
     private fun saveDeliveryInAssignedState(): Delivery {
         val robot = saveRobotForDelivery()
         val delivery = saveDelivery()
-        delivery.assignRobot(robot.getRobotId())
+        delivery.assignRobot(robot.getRobotId(), defaultRouteResult)
         delivery.pullDomainEvents()
         return deliveryRepository.saveAndFlush(delivery)
     }
@@ -1057,11 +1067,24 @@ class DeliveryServiceTest : IntegrationTestSupport() {
         return robotRepository.saveAndFlush(robot)
     }
 
-    private fun saveReadyRobot(name: String = "로봇-1"): Robot {
+    private fun saveReadyRobot(
+        name: String = "로봇-1",
+        location: Location = Location(latitude = 37.5665, longitude = 126.9780),
+    ): Robot {
         val robot = saveRobot(name)
         robot.startDuty()
         robot.pullDomainEvents()
-        return robotRepository.saveAndFlush(robot)
+        val savedRobot = robotRepository.saveAndFlush(robot)
+        robotIotStateRepository.save(
+            RobotIotState(
+                robotId = savedRobot.getRobotId(),
+                location = location,
+                battery = 100,
+                doorOpen = false,
+                loadWeight = 0.0,
+            ),
+        )
+        return savedRobot
     }
 
     private fun saveOffDutyRobot(name: String = "로봇-1"): Robot = saveRobot(name)

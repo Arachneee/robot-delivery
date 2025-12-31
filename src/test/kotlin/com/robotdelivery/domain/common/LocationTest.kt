@@ -1,5 +1,6 @@
 package com.robotdelivery.domain.common
 
+import com.robotdelivery.domain.common.vo.Location
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatCode
 import org.assertj.core.api.Assertions.assertThatThrownBy

@@ -1,11 +1,9 @@
 package com.robotdelivery.application.eventhandler
 
 import com.robotdelivery.config.IntegrationTestSupport
-import com.robotdelivery.domain.common.Location
+import com.robotdelivery.domain.common.vo.Location
 import com.robotdelivery.domain.delivery.Delivery
 import com.robotdelivery.domain.delivery.DeliveryRepository
-import com.robotdelivery.domain.delivery.Destination
-import com.robotdelivery.domain.delivery.DestinationType
 import com.robotdelivery.domain.delivery.event.DeliveryApproachingEvent
 import com.robotdelivery.domain.delivery.event.DeliveryCanceledEvent
 import com.robotdelivery.domain.delivery.event.DeliveryCompletedEvent
@@ -13,14 +11,17 @@ import com.robotdelivery.domain.delivery.event.DeliveryCreatedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryEventHistoryRepository
 import com.robotdelivery.domain.delivery.event.DeliveryRobotAssignedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryStartedEvent
+import com.robotdelivery.domain.delivery.vo.Destination
+import com.robotdelivery.domain.delivery.vo.DestinationType
 import com.robotdelivery.domain.robot.Robot
 import com.robotdelivery.domain.robot.RobotRepository
-import com.robotdelivery.domain.robot.RobotStatus
+import com.robotdelivery.domain.robot.vo.RobotStatus
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import java.time.Duration
 
 @DisplayName("DeliveryEventHistoryHandler 테스트")
 class DeliveryEventHistoryHandlerTest : IntegrationTestSupport() {
@@ -100,6 +101,8 @@ class DeliveryEventHistoryHandlerTest : IntegrationTestSupport() {
                 deliveryId = delivery.getDeliveryId(),
                 robotId = robot.getRobotId(),
                 pickupLocation = Location(37.5665, 126.9780),
+                estimatedPickupDuration = Duration.ofSeconds(300),
+                estimatedDeliveryDuration = Duration.ofSeconds(600),
             )
 
         handler.handle(event)

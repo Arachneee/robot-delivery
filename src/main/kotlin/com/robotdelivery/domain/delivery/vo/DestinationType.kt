@@ -1,4 +1,4 @@
-package com.robotdelivery.domain.delivery
+package com.robotdelivery.domain.delivery.vo
 
 enum class DestinationType {
     PICKUP,

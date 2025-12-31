@@ -1,6 +1,6 @@
 package com.robotdelivery.view.admin.dto
 
-import com.robotdelivery.domain.delivery.DeliveryStatus
+import com.robotdelivery.domain.delivery.vo.DeliveryStatus
 
 data class ChangeStatusResponse(
     val deliveryId: Long,

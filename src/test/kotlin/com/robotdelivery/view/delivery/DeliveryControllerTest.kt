@@ -2,14 +2,13 @@ package com.robotdelivery.view.delivery
 
 import com.robotdelivery.application.command.DeliveryService
 import com.robotdelivery.config.ControllerTestSupport
-import com.robotdelivery.domain.common.DeliveryId
-import com.robotdelivery.domain.common.OrderNo
-import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.common.vo.DeliveryId
+import com.robotdelivery.domain.common.vo.OrderNo
+import com.robotdelivery.domain.common.vo.RobotId
 import com.robotdelivery.view.delivery.dto.CreateAdditionalDeliveryRequest
 import com.robotdelivery.view.delivery.dto.CreateDeliveryRequest
 import com.robotdelivery.view.delivery.dto.OrderItemRequest
 import com.robotdelivery.view.delivery.dto.ReassignRobotRequest
-import java.math.BigDecimal
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -32,6 +31,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import java.math.BigDecimal
 
 @DisplayName("DeliveryController 테스트")
 class DeliveryControllerTest : ControllerTestSupport() {
@@ -53,14 +53,15 @@ class DeliveryControllerTest : ControllerTestSupport() {
                 deliveryLatitude = 37.5087,
                 deliveryLongitude = 127.0632,
                 phoneNumber = "010-1234-5678",
-                items = listOf(
-                    OrderItemRequest(
-                        name = "테스트 상품",
-                        price = BigDecimal("10000"),
-                        quantity = 1,
-                        volume = 1.0,
+                items =
+                    listOf(
+                        OrderItemRequest(
+                            name = "테스트 상품",
+                            price = BigDecimal("10000"),
+                            quantity = 1,
+                            volume = 1.0,
+                        ),
                     ),
-                ),
             )
 
         val deliveryId = DeliveryId(1L)
@@ -156,14 +157,15 @@ class DeliveryControllerTest : ControllerTestSupport() {
                 deliveryLatitude = 37.5087,
                 deliveryLongitude = 127.0632,
                 phoneNumber = "010-1234-5678",
-                items = listOf(
-                    OrderItemRequest(
-                        name = "테스트 상품",
-                        price = BigDecimal("10000"),
-                        quantity = 1,
-                        volume = 1.0,
+                items =
+                    listOf(
+                        OrderItemRequest(
+                            name = "테스트 상품",
+                            price = BigDecimal("10000"),
+                            quantity = 1,
+                            volume = 1.0,
+                        ),
                     ),
-                ),
             )
 
         val deliveryId = DeliveryId(2L)

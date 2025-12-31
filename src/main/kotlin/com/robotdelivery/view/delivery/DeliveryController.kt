@@ -1,9 +1,9 @@
 package com.robotdelivery.view.delivery
 
 import com.robotdelivery.application.command.DeliveryService
-import com.robotdelivery.domain.common.DeliveryId
-import com.robotdelivery.domain.common.OrderNo
-import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.common.vo.DeliveryId
+import com.robotdelivery.domain.common.vo.OrderNo
+import com.robotdelivery.domain.common.vo.RobotId
 import com.robotdelivery.view.delivery.dto.CancelDeliveryResponse
 import com.robotdelivery.view.delivery.dto.CompleteDeliveryResponse
 import com.robotdelivery.view.delivery.dto.CompleteReturnResponse
@@ -48,10 +48,11 @@ class DeliveryController(
     ): ResponseEntity<CreateAdditionalDeliveryResponse> {
         val deliveryId = deliveryService.createAdditionalDelivery(OrderNo(request.orderNo))
 
-        val response = CreateAdditionalDeliveryResponse(
-            deliveryId = deliveryId.value,
-            orderNo = request.orderNo,
-        )
+        val response =
+            CreateAdditionalDeliveryResponse(
+                deliveryId = deliveryId.value,
+                orderNo = request.orderNo,
+            )
 
         return ResponseEntity
             .created(URI.create("/api/deliveries/${deliveryId.value}"))

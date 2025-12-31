@@ -1,6 +1,7 @@
 package com.robotdelivery.domain.delivery
 
-import com.robotdelivery.domain.common.Location
+import com.robotdelivery.domain.common.vo.Location
+import com.robotdelivery.domain.delivery.vo.Destination
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.DisplayName
@@ -50,8 +51,7 @@ class DestinationTest {
                     address = "",
                     location = validLocation,
                 )
-            }
-                .isInstanceOf(IllegalArgumentException::class.java)
+            }.isInstanceOf(IllegalArgumentException::class.java)
                 .hasMessage("주소는 비어있을 수 없습니다.")
         }
 
@@ -63,8 +63,7 @@ class DestinationTest {
                     address = "   ",
                     location = validLocation,
                 )
-            }
-                .isInstanceOf(IllegalArgumentException::class.java)
+            }.isInstanceOf(IllegalArgumentException::class.java)
                 .hasMessage("주소는 비어있을 수 없습니다.")
         }
     }

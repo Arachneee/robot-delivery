@@ -1,6 +1,6 @@
 package com.robotdelivery.infrastructure.persistence.converter
 
-import com.robotdelivery.domain.common.OrderId
+import com.robotdelivery.domain.common.vo.OrderId
 import jakarta.persistence.AttributeConverter
 import jakarta.persistence.Converter
 
@@ -10,4 +10,3 @@ class OrderIdConverter : AttributeConverter<OrderId?, Long?> {
 
     override fun convertToEntityAttribute(dbData: Long?): OrderId? = dbData?.let { OrderId(it) }
 }
-

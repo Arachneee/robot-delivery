@@ -1,7 +1,7 @@
 package com.robotdelivery.domain.delivery
 
-import com.robotdelivery.domain.common.Location
-import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.common.vo.Location
+import com.robotdelivery.domain.common.vo.RobotId
 import com.robotdelivery.domain.delivery.event.DeliveryApproachingEvent
 import com.robotdelivery.domain.delivery.event.DeliveryCanceledEvent
 import com.robotdelivery.domain.delivery.event.DeliveryCompletedEvent
@@ -12,6 +12,10 @@ import com.robotdelivery.domain.delivery.event.DeliveryRobotAssignedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryRobotReassignedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryRobotUnassignedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryStartedEvent
+import com.robotdelivery.domain.delivery.vo.DeliveryStatus
+import com.robotdelivery.domain.delivery.vo.Destination
+import com.robotdelivery.domain.delivery.vo.DestinationType
+import com.robotdelivery.domain.robot.vo.RouteResult
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
@@ -39,6 +43,8 @@ class DeliveryTest {
                 location = Location(latitude = 37.4979, longitude = 127.0276),
             )
     }
+
+    private val defaultRouteResult = RouteResult.of(toPickupSeconds = 300, toDeliverySeconds = 600)
 
     private fun createDelivery(id: Long = 1L): Delivery =
         Delivery(
@@ -116,7 +122,7 @@ class DeliveryTest {
             val delivery = createDelivery()
             val robotId = RobotId(1L)
 
-            delivery.assignRobot(robotId)
+            delivery.assignRobot(robotId, defaultRouteResult)
 
             assertThat(delivery.status).isEqualTo(DeliveryStatus.ASSIGNED)
             assertThat(delivery.assignedRobotId).isEqualTo(robotId)
@@ -128,7 +134,7 @@ class DeliveryTest {
             val delivery = createDelivery()
             val robotId = RobotId(1L)
 
-            delivery.assignRobot(robotId)
+            delivery.assignRobot(robotId, defaultRouteResult)
             val events = delivery.pullDomainEvents()
 
             assertThat(events).hasSize(1)
@@ -140,9 +146,9 @@ class DeliveryTest {
         @DisplayName("PENDING이 아닌 상태에서 로봇을 할당하면 예외가 발생한다")
         fun `PENDING이 아닌 상태에서 로봇을 할당하면 예외가 발생한다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
 
-            assertThatThrownBy { delivery.assignRobot(RobotId(2L)) }
+            assertThatThrownBy { delivery.assignRobot(RobotId(2L), defaultRouteResult) }
                 .isInstanceOf(IllegalStateException::class.java)
                 .hasMessageContaining("대기 상태의 배달만 로봇 배차가 가능합니다")
         }
@@ -155,7 +161,7 @@ class DeliveryTest {
         @DisplayName("ASSIGNED 상태에서 도착하면 PICKUP_ARRIVED가 된다")
         fun `ASSIGNED 상태에서 도착하면 PICKUP_ARRIVED가 된다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
 
             delivery.arrived()
 
@@ -166,7 +172,7 @@ class DeliveryTest {
         @DisplayName("DELIVERING 상태에서 도착하면 DELIVERY_ARRIVED가 된다")
         fun `DELIVERING 상태에서 도착하면 DELIVERY_ARRIVED가 된다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()
@@ -194,7 +200,7 @@ class DeliveryTest {
         @DisplayName("PICKUP_ARRIVED 상태에서 문을 열면 PICKING_UP이 된다")
         fun `PICKUP_ARRIVED 상태에서 문을 열면 PICKING_UP이 된다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
 
             delivery.openDoor()
@@ -206,7 +212,7 @@ class DeliveryTest {
         @DisplayName("DELIVERY_ARRIVED 상태에서 문을 열면 DROPPING_OFF가 된다")
         fun `DELIVERY_ARRIVED 상태에서 문을 열면 DROPPING_OFF가 된다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()
@@ -235,7 +241,7 @@ class DeliveryTest {
         @DisplayName("PICKING_UP 상태에서 배송을 시작할 수 있다")
         fun `PICKING_UP 상태에서 배송을 시작할 수 있다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
 
@@ -248,7 +254,7 @@ class DeliveryTest {
         @DisplayName("배송 시작 시 DeliveryStartedEvent가 발생한다")
         fun `배송 시작 시 DeliveryStartedEvent가 발생한다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.pullDomainEvents()
@@ -264,7 +270,7 @@ class DeliveryTest {
         @DisplayName("ASSIGNED 상태에서 배송을 시작하면 예외가 발생한다")
         fun `ASSIGNED 상태에서 배송을 시작하면 예외가 발생한다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
 
             assertThatThrownBy { delivery.startDelivery() }
                 .isInstanceOf(IllegalStateException::class.java)
@@ -277,7 +283,7 @@ class DeliveryTest {
     inner class CompleteTest {
         private fun createDeliveryInDroppingOffState(): Delivery {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()
@@ -313,7 +319,7 @@ class DeliveryTest {
         @DisplayName("DELIVERING 상태에서 완료하면 예외가 발생한다")
         fun `DELIVERING 상태에서 완료하면 예외가 발생한다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()
@@ -331,7 +337,7 @@ class DeliveryTest {
         @DisplayName("ASSIGNED 상태에서 배차를 취소할 수 있다")
         fun `ASSIGNED 상태에서 배차를 취소할 수 있다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
 
             delivery.unassignRobot()
 
@@ -343,7 +349,7 @@ class DeliveryTest {
         @DisplayName("PICKUP_ARRIVED 상태에서 배차를 취소할 수 있다")
         fun `PICKUP_ARRIVED 상태에서 배차를 취소할 수 있다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
 
             delivery.unassignRobot()
@@ -356,7 +362,7 @@ class DeliveryTest {
         @DisplayName("PICKING_UP 상태에서 배차를 취소할 수 있다")
         fun `PICKING_UP 상태에서 배차를 취소할 수 있다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
 
@@ -371,7 +377,7 @@ class DeliveryTest {
         fun `배차 취소 시 DeliveryRobotUnassignedEvent가 발생한다`() {
             val delivery = createDelivery()
             val robotId = RobotId(1L)
-            delivery.assignRobot(robotId)
+            delivery.assignRobot(robotId, defaultRouteResult)
             delivery.pullDomainEvents()
 
             delivery.unassignRobot()
@@ -397,7 +403,7 @@ class DeliveryTest {
         @DisplayName("DELIVERING 상태에서 배차 취소하면 예외가 발생한다")
         fun `DELIVERING 상태에서 배차 취소하면 예외가 발생한다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()
@@ -411,7 +417,7 @@ class DeliveryTest {
         @DisplayName("COMPLETED 상태에서 배차 취소하면 예외가 발생한다")
         fun `COMPLETED 상태에서 배차 취소하면 예외가 발생한다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()
@@ -442,7 +448,7 @@ class DeliveryTest {
         @DisplayName("ASSIGNED 상태에서 취소할 수 있다")
         fun `ASSIGNED 상태에서 취소할 수 있다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
 
             delivery.cancel()
 
@@ -453,7 +459,7 @@ class DeliveryTest {
         @DisplayName("DELIVERING 상태에서 취소하면 RETURNING 상태가 된다")
         fun `DELIVERING 상태에서 취소하면 RETURNING 상태가 된다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()
@@ -467,7 +473,7 @@ class DeliveryTest {
         @DisplayName("COMPLETED 상태에서 취소하면 예외가 발생한다")
         fun `COMPLETED 상태에서 취소하면 예외가 발생한다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()
@@ -499,7 +505,7 @@ class DeliveryTest {
         @DisplayName("DELIVERING 상태에서 취소 시 DeliveryReturnStartedEvent와 DeliveryCanceledEvent가 발생한다")
         fun `DELIVERING 상태에서 취소 시 DeliveryReturnStartedEvent와 DeliveryCanceledEvent가 발생한다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()
@@ -523,7 +529,7 @@ class DeliveryTest {
         @DisplayName("ASSIGNED 상태에서 접근 알림을 보낼 수 있다")
         fun `ASSIGNED 상태에서 접근 알림을 보낼 수 있다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.pullDomainEvents()
 
             delivery.approaching()
@@ -539,7 +545,7 @@ class DeliveryTest {
         @DisplayName("DELIVERING 상태에서 접근 알림을 보낼 수 있다")
         fun `DELIVERING 상태에서 접근 알림을 보낼 수 있다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()
@@ -558,7 +564,7 @@ class DeliveryTest {
         @DisplayName("RETURNING 상태에서 접근 알림을 보낼 수 있다")
         fun `RETURNING 상태에서 접근 알림을 보낼 수 있다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()
@@ -588,7 +594,7 @@ class DeliveryTest {
         @DisplayName("COMPLETED 상태에서 접근 알림을 보내면 예외가 발생한다")
         fun `COMPLETED 상태에서 접근 알림을 보내면 예외가 발생한다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()
@@ -607,7 +613,7 @@ class DeliveryTest {
     inner class CompleteReturnTest {
         private fun createDeliveryInReturningOffState(): Delivery {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()
@@ -644,7 +650,7 @@ class DeliveryTest {
         @DisplayName("RETURNING 상태에서 회수 완료하면 예외가 발생한다")
         fun `RETURNING 상태에서 회수 완료하면 예외가 발생한다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()
@@ -659,7 +665,7 @@ class DeliveryTest {
         @DisplayName("DROPPING_OFF 상태에서 회수 완료하면 예외가 발생한다")
         fun `DROPPING_OFF 상태에서 회수 완료하면 예외가 발생한다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()
@@ -687,7 +693,7 @@ class DeliveryTest {
         @DisplayName("ASSIGNED 상태에서는 픽업 목적지가 현재 목적지다")
         fun `ASSIGNED 상태에서는 픽업 목적지가 현재 목적지다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
 
             assertThat(delivery.getCurrentDestination()).isEqualTo(pickupDestination)
         }
@@ -696,7 +702,7 @@ class DeliveryTest {
         @DisplayName("DELIVERING 상태에서는 배달 목적지가 현재 목적지다")
         fun `DELIVERING 상태에서는 배달 목적지가 현재 목적지다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()
@@ -708,7 +714,7 @@ class DeliveryTest {
         @DisplayName("RETURNING 상태에서는 픽업 목적지가 현재 목적지다")
         fun `RETURNING 상태에서는 픽업 목적지가 현재 목적지다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()
@@ -727,7 +733,7 @@ class DeliveryTest {
             val delivery = createDelivery()
             val oldRobotId = RobotId(1L)
             val newRobotId = RobotId(2L)
-            delivery.assignRobot(oldRobotId)
+            delivery.assignRobot(oldRobotId, defaultRouteResult)
 
             delivery.reassignRobot(newRobotId)
 
@@ -741,7 +747,7 @@ class DeliveryTest {
             val delivery = createDelivery()
             val oldRobotId = RobotId(1L)
             val newRobotId = RobotId(2L)
-            delivery.assignRobot(oldRobotId)
+            delivery.assignRobot(oldRobotId, defaultRouteResult)
             delivery.arrived()
 
             delivery.reassignRobot(newRobotId)
@@ -756,7 +762,7 @@ class DeliveryTest {
             val delivery = createDelivery()
             val oldRobotId = RobotId(1L)
             val newRobotId = RobotId(2L)
-            delivery.assignRobot(oldRobotId)
+            delivery.assignRobot(oldRobotId, defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
 
@@ -772,7 +778,7 @@ class DeliveryTest {
             val delivery = createDelivery()
             val oldRobotId = RobotId(1L)
             val newRobotId = RobotId(2L)
-            delivery.assignRobot(oldRobotId)
+            delivery.assignRobot(oldRobotId, defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()
@@ -789,7 +795,7 @@ class DeliveryTest {
             val delivery = createDelivery()
             val oldRobotId = RobotId(1L)
             val newRobotId = RobotId(2L)
-            delivery.assignRobot(oldRobotId)
+            delivery.assignRobot(oldRobotId, defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()
@@ -807,7 +813,7 @@ class DeliveryTest {
             val delivery = createDelivery()
             val oldRobotId = RobotId(1L)
             val newRobotId = RobotId(2L)
-            delivery.assignRobot(oldRobotId)
+            delivery.assignRobot(oldRobotId, defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()
@@ -826,7 +832,7 @@ class DeliveryTest {
             val delivery = createDelivery()
             val oldRobotId = RobotId(1L)
             val newRobotId = RobotId(2L)
-            delivery.assignRobot(oldRobotId)
+            delivery.assignRobot(oldRobotId, defaultRouteResult)
             delivery.pullDomainEvents()
 
             delivery.reassignRobot(newRobotId)
@@ -853,7 +859,7 @@ class DeliveryTest {
         @DisplayName("COMPLETED 상태에서 배차 변경하면 예외가 발생한다")
         fun `COMPLETED 상태에서 배차 변경하면 예외가 발생한다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()
@@ -881,7 +887,7 @@ class DeliveryTest {
         @DisplayName("RETURNING 상태에서 배차 변경하면 예외가 발생한다")
         fun `RETURNING 상태에서 배차 변경하면 예외가 발생한다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()
@@ -897,7 +903,7 @@ class DeliveryTest {
         fun `동일한 로봇으로 배차 변경하면 예외가 발생한다`() {
             val delivery = createDelivery()
             val robotId = RobotId(1L)
-            delivery.assignRobot(robotId)
+            delivery.assignRobot(robotId, defaultRouteResult)
 
             assertThatThrownBy { delivery.reassignRobot(robotId) }
                 .isInstanceOf(IllegalStateException::class.java)
@@ -920,7 +926,7 @@ class DeliveryTest {
         @DisplayName("DELIVERING 상태는 활성 상태다")
         fun `DELIVERING 상태는 활성 상태다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()
@@ -932,7 +938,7 @@ class DeliveryTest {
         @DisplayName("COMPLETED 상태는 활성 상태가 아니다")
         fun `COMPLETED 상태는 활성 상태가 아니다`() {
             val delivery = createDelivery()
-            delivery.assignRobot(RobotId(1L))
+            delivery.assignRobot(RobotId(1L), defaultRouteResult)
             delivery.arrived()
             delivery.openDoor()
             delivery.startDelivery()

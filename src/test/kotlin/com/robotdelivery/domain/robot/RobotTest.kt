@@ -1,12 +1,14 @@
 package com.robotdelivery.domain.robot
 
-import com.robotdelivery.domain.common.DeliveryId
-import com.robotdelivery.domain.common.Location
-import com.robotdelivery.domain.common.Volume
+import com.robotdelivery.domain.common.vo.DeliveryId
+import com.robotdelivery.domain.common.vo.Location
+import com.robotdelivery.domain.common.vo.Volume
 import com.robotdelivery.domain.robot.event.RobotApproachingEvent
 import com.robotdelivery.domain.robot.event.RobotArrivedEvent
 import com.robotdelivery.domain.robot.event.RobotBecameAvailableEvent
 import com.robotdelivery.domain.robot.event.RobotDestinationChangedEvent
+import com.robotdelivery.domain.robot.vo.RobotDrivingStatus
+import com.robotdelivery.domain.robot.vo.RobotStatus
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.DisplayName
@@ -198,12 +200,13 @@ class RobotTest {
         @DisplayName("배달 완료 시 destination과 drivingStatus가 초기화된다")
         fun `배달 완료 시 destination과 drivingStatus가 초기화된다`() {
             val destination = Location(latitude = 37.5000, longitude = 127.0000)
-            val robot = createRobot(
-                status = RobotStatus.BUSY,
-                currentDeliveryId = DeliveryId(1L),
-                drivingStatus = RobotDrivingStatus.APPROACHING,
-                destination = destination,
-            )
+            val robot =
+                createRobot(
+                    status = RobotStatus.BUSY,
+                    currentDeliveryId = DeliveryId(1L),
+                    drivingStatus = RobotDrivingStatus.APPROACHING,
+                    destination = destination,
+                )
 
             robot.completeDelivery()
 
@@ -302,12 +305,13 @@ class RobotTest {
         @Test
         @DisplayName("ON_GOING 상태에서 목적지 50m 이내 진입 시 APPROACHING으로 변경되고 RobotApproachingEvent가 발행된다")
         fun `ON_GOING 상태에서 목적지 50m 이내 진입 시 APPROACHING으로 변경되고 RobotApproachingEvent가 발행된다`() {
-            val robot = createRobot(
-                status = RobotStatus.BUSY,
-                drivingStatus = RobotDrivingStatus.ON_GOING,
-                currentDeliveryId = DeliveryId(1L),
-                destination = destination,
-            )
+            val robot =
+                createRobot(
+                    status = RobotStatus.BUSY,
+                    drivingStatus = RobotDrivingStatus.ON_GOING,
+                    currentDeliveryId = DeliveryId(1L),
+                    destination = destination,
+                )
             val locationWithin50m = Location(latitude = 37.5003, longitude = 127.0000)
 
             robot.updateDrivingStatus(locationWithin50m)
@@ -321,12 +325,13 @@ class RobotTest {
         @Test
         @DisplayName("APPROACHING 상태에서 목적지 5m 이내 진입 시 ARRIVED로 변경되고 RobotArrivedEvent가 발행된다")
         fun `APPROACHING 상태에서 목적지 5m 이내 진입 시 ARRIVED로 변경되고 RobotArrivedEvent가 발행된다`() {
-            val robot = createRobot(
-                status = RobotStatus.BUSY,
-                drivingStatus = RobotDrivingStatus.APPROACHING,
-                currentDeliveryId = DeliveryId(1L),
-                destination = destination,
-            )
+            val robot =
+                createRobot(
+                    status = RobotStatus.BUSY,
+                    drivingStatus = RobotDrivingStatus.APPROACHING,
+                    currentDeliveryId = DeliveryId(1L),
+                    destination = destination,
+                )
             val locationWithin5m = Location(latitude = 37.50003, longitude = 127.0000)
 
             robot.updateDrivingStatus(locationWithin5m)
@@ -340,12 +345,13 @@ class RobotTest {
         @Test
         @DisplayName("ON_GOING 상태에서 목적지 5m 이내 진입 시 ARRIVED로 변경되고 두 이벤트가 모두 발행된다")
         fun `ON_GOING 상태에서 목적지 5m 이내 진입 시 ARRIVED로 변경되고 두 이벤트가 모두 발행된다`() {
-            val robot = createRobot(
-                status = RobotStatus.BUSY,
-                drivingStatus = RobotDrivingStatus.ON_GOING,
-                currentDeliveryId = DeliveryId(1L),
-                destination = destination,
-            )
+            val robot =
+                createRobot(
+                    status = RobotStatus.BUSY,
+                    drivingStatus = RobotDrivingStatus.ON_GOING,
+                    currentDeliveryId = DeliveryId(1L),
+                    destination = destination,
+                )
             val locationWithin5m = Location(latitude = 37.50003, longitude = 127.0000)
 
             robot.updateDrivingStatus(locationWithin5m)
@@ -360,12 +366,13 @@ class RobotTest {
         @Test
         @DisplayName("목적지가 없으면 상태가 변경되지 않는다")
         fun `목적지가 없으면 상태가 변경되지 않는다`() {
-            val robot = createRobot(
-                status = RobotStatus.BUSY,
-                drivingStatus = RobotDrivingStatus.ON_GOING,
-                currentDeliveryId = DeliveryId(1L),
-                destination = null,
-            )
+            val robot =
+                createRobot(
+                    status = RobotStatus.BUSY,
+                    drivingStatus = RobotDrivingStatus.ON_GOING,
+                    currentDeliveryId = DeliveryId(1L),
+                    destination = null,
+                )
             val newLocation = Location(latitude = 37.5000, longitude = 127.0000)
 
             robot.updateDrivingStatus(newLocation)
@@ -378,12 +385,13 @@ class RobotTest {
         @Test
         @DisplayName("ON_GOING 상태에서 목적지 50m 초과 시 상태가 유지된다")
         fun `ON_GOING 상태에서 목적지 50m 초과 시 상태가 유지된다`() {
-            val robot = createRobot(
-                status = RobotStatus.BUSY,
-                drivingStatus = RobotDrivingStatus.ON_GOING,
-                currentDeliveryId = DeliveryId(1L),
-                destination = destination,
-            )
+            val robot =
+                createRobot(
+                    status = RobotStatus.BUSY,
+                    drivingStatus = RobotDrivingStatus.ON_GOING,
+                    currentDeliveryId = DeliveryId(1L),
+                    destination = destination,
+                )
             val locationBeyond50m = Location(latitude = 37.501, longitude = 127.0000)
 
             robot.updateDrivingStatus(locationBeyond50m)

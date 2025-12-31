@@ -1,9 +1,9 @@
 package com.robotdelivery.domain.order
 
-import com.robotdelivery.domain.common.Location
-import com.robotdelivery.domain.common.OrderNo
-import com.robotdelivery.domain.common.Volume
-import com.robotdelivery.domain.delivery.Destination
+import com.robotdelivery.domain.common.vo.Location
+import com.robotdelivery.domain.common.vo.OrderNo
+import com.robotdelivery.domain.common.vo.Volume
+import com.robotdelivery.domain.delivery.vo.Destination
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
@@ -19,29 +19,32 @@ class OrderTest {
 
     @BeforeEach
     fun setUp() {
-        pickupDestination = Destination(
-            address = "서울시 중구 세종대로 110",
-            addressDetail = "시청역 1번 출구",
-            location = Location(latitude = 37.5665, longitude = 126.9780),
-        )
-        deliveryDestination = Destination(
-            address = "서울시 강남구 테헤란로 1",
-            addressDetail = "강남역 2번 출구",
-            location = Location(latitude = 37.4979, longitude = 127.0276),
-        )
+        pickupDestination =
+            Destination(
+                address = "서울시 중구 세종대로 110",
+                addressDetail = "시청역 1번 출구",
+                location = Location(latitude = 37.5665, longitude = 126.9780),
+            )
+        deliveryDestination =
+            Destination(
+                address = "서울시 강남구 테헤란로 1",
+                addressDetail = "강남역 2번 출구",
+                location = Location(latitude = 37.4979, longitude = 127.0276),
+            )
     }
 
     private fun createOrder(
         id: Long = 1L,
         orderNo: OrderNo = OrderNo("ORDER-001"),
-        items: List<OrderItem> = listOf(
-            OrderItem(
-                name = "테스트 상품",
-                price = BigDecimal("10000"),
-                quantity = 1,
-                volume = 5.0,
+        items: List<OrderItem> =
+            listOf(
+                OrderItem(
+                    name = "테스트 상품",
+                    price = BigDecimal("10000"),
+                    quantity = 1,
+                    volume = 5.0,
+                ),
             ),
-        ),
     ): Order =
         Order(
             id = id,
@@ -77,17 +80,17 @@ class OrderTest {
                     pickupDestination = pickupDestination,
                     deliveryDestination = deliveryDestination,
                     phoneNumber = "",
-                    items = listOf(
-                        OrderItem(
-                            name = "테스트 상품",
-                            price = BigDecimal("10000"),
-                            quantity = 1,
-                            volume = 5.0,
+                    items =
+                        listOf(
+                            OrderItem(
+                                name = "테스트 상품",
+                                price = BigDecimal("10000"),
+                                quantity = 1,
+                                volume = 5.0,
+                            ),
                         ),
-                    ),
                 )
-            }
-                .isInstanceOf(IllegalArgumentException::class.java)
+            }.isInstanceOf(IllegalArgumentException::class.java)
                 .hasMessageContaining("전화번호는 비어있을 수 없습니다")
         }
 
@@ -103,8 +106,7 @@ class OrderTest {
                     phoneNumber = "010-1234-5678",
                     items = emptyList(),
                 )
-            }
-                .isInstanceOf(IllegalArgumentException::class.java)
+            }.isInstanceOf(IllegalArgumentException::class.java)
                 .hasMessageContaining("주문 항목은 최소 1개 이상이어야 합니다")
         }
     }
@@ -115,16 +117,18 @@ class OrderTest {
         @Test
         @DisplayName("단일 상품의 총 부피를 계산한다")
         fun `단일 상품의 총 부피를 계산한다`() {
-            val order = createOrder(
-                items = listOf(
-                    OrderItem(
-                        name = "상품 A",
-                        price = BigDecimal("10000"),
-                        quantity = 2,
-                        volume = 5.0,
-                    ),
-                ),
-            )
+            val order =
+                createOrder(
+                    items =
+                        listOf(
+                            OrderItem(
+                                name = "상품 A",
+                                price = BigDecimal("10000"),
+                                quantity = 2,
+                                volume = 5.0,
+                            ),
+                        ),
+                )
 
             val totalVolume = order.calculateTotalVolume()
 
@@ -134,22 +138,24 @@ class OrderTest {
         @Test
         @DisplayName("여러 상품의 총 부피를 계산한다")
         fun `여러 상품의 총 부피를 계산한다`() {
-            val order = createOrder(
-                items = listOf(
-                    OrderItem(
-                        name = "상품 A",
-                        price = BigDecimal("10000"),
-                        quantity = 2,
-                        volume = 5.0,
-                    ),
-                    OrderItem(
-                        name = "상품 B",
-                        price = BigDecimal("20000"),
-                        quantity = 3,
-                        volume = 3.0,
-                    ),
-                ),
-            )
+            val order =
+                createOrder(
+                    items =
+                        listOf(
+                            OrderItem(
+                                name = "상품 A",
+                                price = BigDecimal("10000"),
+                                quantity = 2,
+                                volume = 5.0,
+                            ),
+                            OrderItem(
+                                name = "상품 B",
+                                price = BigDecimal("20000"),
+                                quantity = 3,
+                                volume = 3.0,
+                            ),
+                        ),
+                )
 
             val totalVolume = order.calculateTotalVolume()
 
@@ -181,4 +187,3 @@ class OrderTest {
         }
     }
 }
-

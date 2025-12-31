@@ -1,12 +1,14 @@
 package com.robotdelivery.domain.delivery
 
 import com.robotdelivery.config.IntegrationTestSupport
-import com.robotdelivery.domain.common.Location
+import com.robotdelivery.domain.common.vo.Location
+import com.robotdelivery.domain.delivery.vo.DeliveryStatus
+import com.robotdelivery.domain.delivery.vo.Destination
 import com.robotdelivery.domain.robot.Robot
 import com.robotdelivery.domain.robot.RobotIotState
 import com.robotdelivery.domain.robot.RobotIotStateRepository
 import com.robotdelivery.domain.robot.RobotRepository
-import com.robotdelivery.domain.robot.RobotStatus
+import com.robotdelivery.domain.robot.vo.RobotStatus
 import com.robotdelivery.infrastructure.persistence.InMemoryRobotIotStateRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach

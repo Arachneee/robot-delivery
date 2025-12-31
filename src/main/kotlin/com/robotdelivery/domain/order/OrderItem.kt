@@ -1,6 +1,6 @@
 package com.robotdelivery.domain.order
 
-import com.robotdelivery.domain.common.Volume
+import com.robotdelivery.domain.common.vo.Volume
 import jakarta.persistence.Column
 import jakarta.persistence.Embeddable
 import java.math.BigDecimal
@@ -25,4 +25,3 @@ data class OrderItem(
 
     fun calculateTotalVolume(): Volume = Volume(volume) * quantity
 }
-

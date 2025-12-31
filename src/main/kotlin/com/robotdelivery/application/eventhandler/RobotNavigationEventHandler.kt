@@ -1,6 +1,6 @@
 package com.robotdelivery.application.eventhandler
 
-import com.robotdelivery.application.client.RobotClient
+import com.robotdelivery.domain.robot.RobotClient
 import com.robotdelivery.domain.robot.event.RobotDestinationChangedEvent
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Async

@@ -1,8 +1,8 @@
 package com.robotdelivery.view.admin
 
 import com.robotdelivery.application.command.DeliveryService
-import com.robotdelivery.domain.common.DeliveryId
-import com.robotdelivery.domain.delivery.DeliveryStatus
+import com.robotdelivery.domain.common.vo.DeliveryId
+import com.robotdelivery.domain.delivery.vo.DeliveryStatus
 import com.robotdelivery.view.admin.dto.ChangeStatusResponse
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PathVariable

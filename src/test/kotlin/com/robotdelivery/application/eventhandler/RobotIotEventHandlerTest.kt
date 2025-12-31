@@ -1,12 +1,12 @@
 package com.robotdelivery.application.eventhandler
 
 import com.robotdelivery.config.IntegrationTestSupport
-import com.robotdelivery.domain.common.Location
-import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.common.vo.Location
+import com.robotdelivery.domain.common.vo.RobotId
 import com.robotdelivery.domain.robot.Robot
 import com.robotdelivery.domain.robot.RobotIotStateRepository
 import com.robotdelivery.domain.robot.RobotRepository
-import com.robotdelivery.domain.robot.RobotStatus
+import com.robotdelivery.domain.robot.vo.RobotStatus
 import com.robotdelivery.infrastructure.event.external.RobotIotUpdatedEvent
 import com.robotdelivery.infrastructure.persistence.InMemoryRobotIotStateRepository
 import org.assertj.core.api.Assertions.assertThat

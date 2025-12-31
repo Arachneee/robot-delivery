@@ -1,6 +1,6 @@
-package com.robotdelivery.domain.delivery
+package com.robotdelivery.domain.delivery.vo
 
-import com.robotdelivery.domain.common.Location
+import com.robotdelivery.domain.common.vo.Location
 import jakarta.persistence.Column
 import jakarta.persistence.Embeddable
 import jakarta.persistence.Embedded

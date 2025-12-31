@@ -3,10 +3,10 @@
 package com.robotdelivery.domain.delivery
 
 import com.robotdelivery.domain.common.BaseEntity
-import com.robotdelivery.domain.common.DeliveryId
-import com.robotdelivery.domain.common.OrderId
-import com.robotdelivery.domain.common.RobotId
-import com.robotdelivery.domain.common.Volume
+import com.robotdelivery.domain.common.vo.DeliveryId
+import com.robotdelivery.domain.common.vo.OrderId
+import com.robotdelivery.domain.common.vo.RobotId
+import com.robotdelivery.domain.common.vo.Volume
 import com.robotdelivery.domain.delivery.event.DeliveryApproachingEvent
 import com.robotdelivery.domain.delivery.event.DeliveryArrivedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryCanceledEvent
@@ -18,6 +18,10 @@ import com.robotdelivery.domain.delivery.event.DeliveryRobotAssignedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryRobotReassignedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryRobotUnassignedEvent
 import com.robotdelivery.domain.delivery.event.DeliveryStartedEvent
+import com.robotdelivery.domain.delivery.vo.DeliveryStatus
+import com.robotdelivery.domain.delivery.vo.Destination
+import com.robotdelivery.domain.delivery.vo.DestinationType
+import com.robotdelivery.domain.robot.vo.RouteResult
 import com.robotdelivery.infrastructure.persistence.converter.OrderIdConverter
 import com.robotdelivery.infrastructure.persistence.converter.RobotIdConverter
 import com.robotdelivery.infrastructure.persistence.converter.VolumeConverter
@@ -91,7 +95,10 @@ class Delivery(
         }
     }
 
-    fun assignRobot(robotId: RobotId) {
+    fun assignRobot(
+        robotId: RobotId,
+        routeResult: RouteResult,
+    ) {
         check(status == DeliveryStatus.PENDING) {
             "대기 상태의 배달만 로봇 배차가 가능합니다. 현재 상태: $status"
         }
@@ -103,6 +110,8 @@ class Delivery(
                 deliveryId = getDeliveryId(),
                 robotId = robotId,
                 pickupLocation = pickupDestination.location,
+                estimatedPickupDuration = routeResult.toPickupDuration,
+                estimatedDeliveryDuration = routeResult.toDeliveryDuration,
             ),
         )
     }

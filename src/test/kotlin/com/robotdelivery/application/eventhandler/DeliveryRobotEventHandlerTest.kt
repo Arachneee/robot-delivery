@@ -2,19 +2,20 @@ package com.robotdelivery.application.eventhandler
 
 import com.robotdelivery.config.IntegrationTestSupport
 import com.robotdelivery.config.TestDeliveryApproachingEventListener
-import com.robotdelivery.domain.common.Location
-import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.common.vo.Location
+import com.robotdelivery.domain.common.vo.RobotId
 import com.robotdelivery.domain.delivery.Delivery
 import com.robotdelivery.domain.delivery.DeliveryRepository
-import com.robotdelivery.domain.delivery.DeliveryStatus
-import com.robotdelivery.domain.delivery.Destination
-import com.robotdelivery.domain.delivery.DestinationType
+import com.robotdelivery.domain.delivery.vo.DeliveryStatus
+import com.robotdelivery.domain.delivery.vo.Destination
+import com.robotdelivery.domain.delivery.vo.DestinationType
 import com.robotdelivery.domain.robot.Robot
 import com.robotdelivery.domain.robot.RobotRepository
-import com.robotdelivery.domain.robot.RobotStatus
 import com.robotdelivery.domain.robot.event.RobotApproachingEvent
 import com.robotdelivery.domain.robot.event.RobotArrivedEvent
 import com.robotdelivery.domain.robot.findById
+import com.robotdelivery.domain.robot.vo.RobotStatus
+import com.robotdelivery.domain.robot.vo.RouteResult
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -35,6 +36,8 @@ class DeliveryRobotEventHandlerTest : IntegrationTestSupport() {
 
     @Autowired
     private lateinit var testEventListener: TestDeliveryApproachingEventListener
+
+    private val defaultRouteResult = RouteResult.of(toPickupSeconds = 300, toDeliverySeconds = 600)
 
     @BeforeEach
     fun setUp() {
@@ -80,7 +83,7 @@ class DeliveryRobotEventHandlerTest : IntegrationTestSupport() {
     private fun saveDeliveryInAssignedState(): Delivery {
         val delivery = saveDelivery()
         val robot = saveRobotWithDelivery(delivery)
-        delivery.assignRobot(robot.getRobotId())
+        delivery.assignRobot(robot.getRobotId(), defaultRouteResult)
         delivery.pullDomainEvents()
         return deliveryRepository.saveAndFlush(delivery)
     }

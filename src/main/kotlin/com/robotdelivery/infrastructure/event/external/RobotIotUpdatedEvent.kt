@@ -1,7 +1,7 @@
 package com.robotdelivery.infrastructure.event.external
 
-import com.robotdelivery.domain.common.Location
-import com.robotdelivery.domain.common.RobotId
+import com.robotdelivery.domain.common.vo.Location
+import com.robotdelivery.domain.common.vo.RobotId
 
 data class RobotIotUpdatedEvent(
     val robotId: RobotId,

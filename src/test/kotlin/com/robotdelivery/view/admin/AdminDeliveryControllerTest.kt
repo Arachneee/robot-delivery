@@ -3,8 +3,8 @@ package com.robotdelivery.view.admin
 import com.robotdelivery.application.command.DeliveryService
 import com.robotdelivery.application.command.vo.ChangeStatusResult
 import com.robotdelivery.config.ControllerTestSupport
-import com.robotdelivery.domain.common.DeliveryId
-import com.robotdelivery.domain.delivery.DeliveryStatus
+import com.robotdelivery.domain.common.vo.DeliveryId
+import com.robotdelivery.domain.delivery.vo.DeliveryStatus
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.whenever

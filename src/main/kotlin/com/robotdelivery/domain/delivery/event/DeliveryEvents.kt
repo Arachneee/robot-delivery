@@ -1,9 +1,10 @@
 package com.robotdelivery.domain.delivery.event
 
-import com.robotdelivery.domain.common.DeliveryId
-import com.robotdelivery.domain.common.Location
-import com.robotdelivery.domain.common.RobotId
-import com.robotdelivery.domain.delivery.DestinationType
+import com.robotdelivery.domain.common.vo.DeliveryId
+import com.robotdelivery.domain.common.vo.Location
+import com.robotdelivery.domain.common.vo.RobotId
+import com.robotdelivery.domain.delivery.vo.DestinationType
+import java.time.Duration
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -24,6 +25,8 @@ class DeliveryRobotAssignedEvent(
     deliveryId: DeliveryId,
     robotId: RobotId,
     val pickupLocation: Location,
+    val estimatedPickupDuration: Duration,
+    val estimatedDeliveryDuration: Duration,
 ) : DeliveryEvent(deliveryId = deliveryId, robotId = robotId)
 
 class DeliveryStartedEvent(
