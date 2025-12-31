@@ -2,9 +2,11 @@ package com.robotdelivery.view.delivery
 
 import com.robotdelivery.application.command.DeliveryService
 import com.robotdelivery.config.ControllerTestSupport
+import com.robotdelivery.application.command.vo.CreateDeliveryResult
 import com.robotdelivery.domain.common.vo.DeliveryId
 import com.robotdelivery.domain.common.vo.OrderNo
 import com.robotdelivery.domain.common.vo.RobotId
+import java.time.Duration
 import com.robotdelivery.view.delivery.dto.CreateAdditionalDeliveryRequest
 import com.robotdelivery.view.delivery.dto.CreateDeliveryRequest
 import com.robotdelivery.view.delivery.dto.OrderItemRequest
@@ -64,8 +66,12 @@ class DeliveryControllerTest : ControllerTestSupport() {
                     ),
             )
 
-        val deliveryId = DeliveryId(1L)
-        given(deliveryService.createDelivery(any())).willReturn(deliveryId)
+        val result = CreateDeliveryResult(
+            deliveryId = DeliveryId(1L),
+            estimatedPickupDuration = Duration.ofMinutes(10),
+            estimatedDeliveryDuration = Duration.ofMinutes(15),
+        )
+        given(deliveryService.createDelivery(any())).willReturn(result)
 
         mockMvc
             .perform(
@@ -75,6 +81,8 @@ class DeliveryControllerTest : ControllerTestSupport() {
             ).andExpect(status().isCreated)
             .andExpect(header().string("Location", "/api/deliveries/1"))
             .andExpect(jsonPath("$.deliveryId").value(1))
+            .andExpect(jsonPath("$.estimatedPickupSeconds").value(600))
+            .andExpect(jsonPath("$.estimatedDeliverySeconds").value(900))
             .andExpect(jsonPath("$.message").value("배달이 성공적으로 생성되었습니다."))
             .andDo(
                 document(
@@ -134,6 +142,12 @@ class DeliveryControllerTest : ControllerTestSupport() {
                         fieldWithPath("deliveryId")
                             .type(JsonFieldType.NUMBER)
                             .description("생성된 배달 ID"),
+                        fieldWithPath("estimatedPickupSeconds")
+                            .type(JsonFieldType.NUMBER)
+                            .description("예상 픽업 도착 시간 (초)"),
+                        fieldWithPath("estimatedDeliverySeconds")
+                            .type(JsonFieldType.NUMBER)
+                            .description("예상 배달 소요 시간 (초)"),
                         fieldWithPath("message")
                             .type(JsonFieldType.STRING)
                             .description("응답 메시지"),
@@ -168,8 +182,12 @@ class DeliveryControllerTest : ControllerTestSupport() {
                     ),
             )
 
-        val deliveryId = DeliveryId(2L)
-        given(deliveryService.createDelivery(any())).willReturn(deliveryId)
+        val result = CreateDeliveryResult(
+            deliveryId = DeliveryId(2L),
+            estimatedPickupDuration = Duration.ofMinutes(10),
+            estimatedDeliveryDuration = Duration.ofMinutes(15),
+        )
+        given(deliveryService.createDelivery(any())).willReturn(result)
 
         mockMvc
             .perform(
@@ -463,8 +481,12 @@ class DeliveryControllerTest : ControllerTestSupport() {
         val orderNo = "ORDER-001"
         val request = CreateAdditionalDeliveryRequest(orderNo = orderNo)
 
-        val deliveryId = DeliveryId(3L)
-        given(deliveryService.createAdditionalDelivery(OrderNo(orderNo))).willReturn(deliveryId)
+        val result = CreateDeliveryResult(
+            deliveryId = DeliveryId(3L),
+            estimatedPickupDuration = Duration.ofMinutes(10),
+            estimatedDeliveryDuration = Duration.ofMinutes(15),
+        )
+        given(deliveryService.createAdditionalDelivery(OrderNo(orderNo))).willReturn(result)
 
         mockMvc
             .perform(
@@ -475,6 +497,8 @@ class DeliveryControllerTest : ControllerTestSupport() {
             .andExpect(header().string("Location", "/api/deliveries/3"))
             .andExpect(jsonPath("$.deliveryId").value(3))
             .andExpect(jsonPath("$.orderNo").value(orderNo))
+            .andExpect(jsonPath("$.estimatedPickupSeconds").value(600))
+            .andExpect(jsonPath("$.estimatedDeliverySeconds").value(900))
             .andExpect(jsonPath("$.message").value("추가 배달이 성공적으로 생성되었습니다."))
             .andDo(
                 document(
@@ -493,6 +517,12 @@ class DeliveryControllerTest : ControllerTestSupport() {
                         fieldWithPath("orderNo")
                             .type(JsonFieldType.STRING)
                             .description("주문 번호"),
+                        fieldWithPath("estimatedPickupSeconds")
+                            .type(JsonFieldType.NUMBER)
+                            .description("예상 픽업 도착 시간 (초)"),
+                        fieldWithPath("estimatedDeliverySeconds")
+                            .type(JsonFieldType.NUMBER)
+                            .description("예상 배달 소요 시간 (초)"),
                         fieldWithPath("message")
                             .type(JsonFieldType.STRING)
                             .description("응답 메시지"),

@@ -2,11 +2,13 @@ package com.robotdelivery.config
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.robotdelivery.application.query.DeliveryEstimationService
 import com.robotdelivery.view.admin.AdminDeliveryController
 import com.robotdelivery.view.delivery.DeliveryController
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.restdocs.test.autoconfigure.AutoConfigureRestDocs
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 
 @WebMvcTest(value = [DeliveryController::class, AdminDeliveryController::class])
@@ -14,6 +16,9 @@ import org.springframework.test.web.servlet.MockMvc
 abstract class ControllerTestSupport {
     @Autowired
     protected lateinit var mockMvc: MockMvc
+
+    @MockitoBean
+    protected lateinit var deliveryEstimationService: DeliveryEstimationService
 
     protected val objectMapper: ObjectMapper = jacksonObjectMapper()
 }

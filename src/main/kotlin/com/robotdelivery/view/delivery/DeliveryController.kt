@@ -1,6 +1,7 @@
 package com.robotdelivery.view.delivery
 
 import com.robotdelivery.application.command.DeliveryService
+import com.robotdelivery.application.query.DeliveryEstimationService
 import com.robotdelivery.domain.common.vo.DeliveryId
 import com.robotdelivery.domain.common.vo.OrderNo
 import com.robotdelivery.domain.common.vo.RobotId
@@ -11,6 +12,8 @@ import com.robotdelivery.view.delivery.dto.CreateAdditionalDeliveryRequest
 import com.robotdelivery.view.delivery.dto.CreateAdditionalDeliveryResponse
 import com.robotdelivery.view.delivery.dto.CreateDeliveryRequest
 import com.robotdelivery.view.delivery.dto.CreateDeliveryResponse
+import com.robotdelivery.view.delivery.dto.EstimateDeliveryTimeRequest
+import com.robotdelivery.view.delivery.dto.EstimateDeliveryTimeResponse
 import com.robotdelivery.view.delivery.dto.OpenDoorResponse
 import com.robotdelivery.view.delivery.dto.ReassignRobotRequest
 import com.robotdelivery.view.delivery.dto.ReassignRobotResponse
@@ -28,17 +31,39 @@ import java.net.URI
 @RequestMapping("/api/deliveries")
 class DeliveryController(
     private val deliveryService: DeliveryService,
+    private val deliveryEstimationService: DeliveryEstimationService,
 ) {
+    @PostMapping("/estimate")
+    fun estimateDeliveryTime(
+        @RequestBody request: EstimateDeliveryTimeRequest,
+    ): ResponseEntity<EstimateDeliveryTimeResponse> {
+        val estimation = deliveryEstimationService.estimateDeliveryTime(request.toQuery())
+
+        val response =
+            EstimateDeliveryTimeResponse(
+                estimatedPickupSeconds = estimation.estimatedPickupDuration.toSeconds(),
+                estimatedDeliverySeconds = estimation.estimatedDeliveryDuration.toSeconds(),
+                totalEstimatedSeconds = estimation.totalDuration.toSeconds(),
+            )
+
+        return ResponseEntity.ok(response)
+    }
+
     @PostMapping
     fun createDelivery(
         @RequestBody request: CreateDeliveryRequest,
     ): ResponseEntity<CreateDeliveryResponse> {
-        val deliveryId = deliveryService.createDelivery(request.toCommand())
+        val result = deliveryService.createDelivery(request.toCommand())
 
-        val response = CreateDeliveryResponse(deliveryId = deliveryId.value)
+        val response =
+            CreateDeliveryResponse(
+                deliveryId = result.deliveryId.value,
+                estimatedPickupSeconds = result.estimatedPickupDuration.toSeconds(),
+                estimatedDeliverySeconds = result.estimatedDeliveryDuration.toSeconds(),
+            )
 
         return ResponseEntity
-            .created(URI.create("/api/deliveries/${deliveryId.value}"))
+            .created(URI.create("/api/deliveries/${result.deliveryId.value}"))
             .body(response)
     }
 
@@ -46,16 +71,18 @@ class DeliveryController(
     fun createAdditionalDelivery(
         @RequestBody request: CreateAdditionalDeliveryRequest,
     ): ResponseEntity<CreateAdditionalDeliveryResponse> {
-        val deliveryId = deliveryService.createAdditionalDelivery(OrderNo(request.orderNo))
+        val result = deliveryService.createAdditionalDelivery(OrderNo(request.orderNo))
 
         val response =
             CreateAdditionalDeliveryResponse(
-                deliveryId = deliveryId.value,
+                deliveryId = result.deliveryId.value,
                 orderNo = request.orderNo,
+                estimatedPickupSeconds = result.estimatedPickupDuration.toSeconds(),
+                estimatedDeliverySeconds = result.estimatedDeliveryDuration.toSeconds(),
             )
 
         return ResponseEntity
-            .created(URI.create("/api/deliveries/${deliveryId.value}"))
+            .created(URI.create("/api/deliveries/${result.deliveryId.value}"))
             .body(response)
     }
 
