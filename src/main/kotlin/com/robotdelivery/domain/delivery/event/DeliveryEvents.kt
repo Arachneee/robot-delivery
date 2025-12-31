@@ -65,6 +65,8 @@ class DeliveryRobotReassignedEvent(
     deliveryId: DeliveryId,
     val previousRobotId: RobotId,
     val newRobotId: RobotId,
+    val estimatedPickupDuration: Duration,
+    val estimatedDeliveryDuration: Duration,
 ) : DeliveryEvent(deliveryId = deliveryId, robotId = newRobotId)
 
 class DeliveryApproachingEvent(

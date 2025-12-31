@@ -81,7 +81,7 @@ class DeliveryAssignmentService(
         if (!routeResult.isAvailable) return AssignmentResult.Failure.RouteNotAvailable
 
         if (delivery.assignedRobotId != null) {
-            delivery.reassignRobot(newRobot.getRobotId())
+            delivery.reassignRobot(newRobot.getRobotId(), routeResult)
         } else {
             delivery.assignRobot(newRobot.getRobotId(), routeResult)
         }

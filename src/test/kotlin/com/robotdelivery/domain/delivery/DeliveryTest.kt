@@ -735,7 +735,7 @@ class DeliveryTest {
             val newRobotId = RobotId(2L)
             delivery.assignRobot(oldRobotId, defaultRouteResult)
 
-            delivery.reassignRobot(newRobotId)
+            delivery.reassignRobot(newRobotId, defaultRouteResult)
 
             assertThat(delivery.status).isEqualTo(DeliveryStatus.ASSIGNED)
             assertThat(delivery.assignedRobotId).isEqualTo(newRobotId)
@@ -750,7 +750,7 @@ class DeliveryTest {
             delivery.assignRobot(oldRobotId, defaultRouteResult)
             delivery.arrived()
 
-            delivery.reassignRobot(newRobotId)
+            delivery.reassignRobot(newRobotId, defaultRouteResult)
 
             assertThat(delivery.status).isEqualTo(DeliveryStatus.PICKUP_ARRIVED)
             assertThat(delivery.assignedRobotId).isEqualTo(newRobotId)
@@ -766,7 +766,7 @@ class DeliveryTest {
             delivery.arrived()
             delivery.openDoor()
 
-            delivery.reassignRobot(newRobotId)
+            delivery.reassignRobot(newRobotId, defaultRouteResult)
 
             assertThat(delivery.status).isEqualTo(DeliveryStatus.PICKING_UP)
             assertThat(delivery.assignedRobotId).isEqualTo(newRobotId)
@@ -783,7 +783,7 @@ class DeliveryTest {
             delivery.openDoor()
             delivery.startDelivery()
 
-            delivery.reassignRobot(newRobotId)
+            delivery.reassignRobot(newRobotId, defaultRouteResult)
 
             assertThat(delivery.status).isEqualTo(DeliveryStatus.DELIVERING)
             assertThat(delivery.assignedRobotId).isEqualTo(newRobotId)
@@ -801,7 +801,7 @@ class DeliveryTest {
             delivery.startDelivery()
             delivery.arrived()
 
-            delivery.reassignRobot(newRobotId)
+            delivery.reassignRobot(newRobotId, defaultRouteResult)
 
             assertThat(delivery.status).isEqualTo(DeliveryStatus.DELIVERY_ARRIVED)
             assertThat(delivery.assignedRobotId).isEqualTo(newRobotId)
@@ -820,7 +820,7 @@ class DeliveryTest {
             delivery.arrived()
             delivery.openDoor()
 
-            delivery.reassignRobot(newRobotId)
+            delivery.reassignRobot(newRobotId, defaultRouteResult)
 
             assertThat(delivery.status).isEqualTo(DeliveryStatus.DROPPING_OFF)
             assertThat(delivery.assignedRobotId).isEqualTo(newRobotId)
@@ -835,13 +835,15 @@ class DeliveryTest {
             delivery.assignRobot(oldRobotId, defaultRouteResult)
             delivery.pullDomainEvents()
 
-            delivery.reassignRobot(newRobotId)
+            delivery.reassignRobot(newRobotId, defaultRouteResult)
             val events = delivery.pullDomainEvents()
 
             assertThat(events).hasSize(1)
             val event = events[0] as DeliveryRobotReassignedEvent
             assertThat(event.previousRobotId).isEqualTo(oldRobotId)
             assertThat(event.newRobotId).isEqualTo(newRobotId)
+            assertThat(event.estimatedPickupDuration).isEqualTo(defaultRouteResult.toPickupDuration)
+            assertThat(event.estimatedDeliveryDuration).isEqualTo(defaultRouteResult.toDeliveryDuration)
         }
 
         @Test
@@ -850,7 +852,7 @@ class DeliveryTest {
             val delivery = createDelivery()
             val newRobotId = RobotId(2L)
 
-            assertThatThrownBy { delivery.reassignRobot(newRobotId) }
+            assertThatThrownBy { delivery.reassignRobot(newRobotId, defaultRouteResult) }
                 .isInstanceOf(IllegalStateException::class.java)
                 .hasMessageContaining("배차 변경이 불가능한 상태입니다")
         }
@@ -867,7 +869,7 @@ class DeliveryTest {
             delivery.openDoor()
             delivery.complete()
 
-            assertThatThrownBy { delivery.reassignRobot(RobotId(2L)) }
+            assertThatThrownBy { delivery.reassignRobot(RobotId(2L), defaultRouteResult) }
                 .isInstanceOf(IllegalStateException::class.java)
                 .hasMessageContaining("배차 변경이 불가능한 상태입니다")
         }
@@ -878,7 +880,7 @@ class DeliveryTest {
             val delivery = createDelivery()
             delivery.cancel()
 
-            assertThatThrownBy { delivery.reassignRobot(RobotId(2L)) }
+            assertThatThrownBy { delivery.reassignRobot(RobotId(2L), defaultRouteResult) }
                 .isInstanceOf(IllegalStateException::class.java)
                 .hasMessageContaining("배차 변경이 불가능한 상태입니다")
         }
@@ -893,7 +895,7 @@ class DeliveryTest {
             delivery.startDelivery()
             delivery.cancel()
 
-            assertThatThrownBy { delivery.reassignRobot(RobotId(2L)) }
+            assertThatThrownBy { delivery.reassignRobot(RobotId(2L), defaultRouteResult) }
                 .isInstanceOf(IllegalStateException::class.java)
                 .hasMessageContaining("배차 변경이 불가능한 상태입니다")
         }
@@ -905,7 +907,7 @@ class DeliveryTest {
             val robotId = RobotId(1L)
             delivery.assignRobot(robotId, defaultRouteResult)
 
-            assertThatThrownBy { delivery.reassignRobot(robotId) }
+            assertThatThrownBy { delivery.reassignRobot(robotId, defaultRouteResult) }
                 .isInstanceOf(IllegalStateException::class.java)
                 .hasMessageContaining("동일한 로봇으로는 배차 변경할 수 없습니다")
         }

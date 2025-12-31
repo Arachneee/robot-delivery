@@ -135,7 +135,10 @@ class Delivery(
         )
     }
 
-    fun reassignRobot(newRobotId: RobotId) {
+    fun reassignRobot(
+        newRobotId: RobotId,
+        routeResult: RouteResult,
+    ) {
         check(status.isReassignable()) {
             "배차 변경이 불가능한 상태입니다. 현재 상태: $status"
         }
@@ -154,6 +157,8 @@ class Delivery(
                 deliveryId = getDeliveryId(),
                 previousRobotId = previousRobotId,
                 newRobotId = newRobotId,
+                estimatedPickupDuration = routeResult.toPickupDuration,
+                estimatedDeliveryDuration = routeResult.toDeliveryDuration,
             ),
         )
     }
@@ -299,6 +304,5 @@ class Delivery(
         return DeliveryId(id)
     }
 
-    override fun toString(): String =
-        "Delivery(id=$id, phoneNumber='$phoneNumber', status=$status, assignedRobotId=$assignedRobotId, isNew=$isNew)"
+    override fun toString(): String = "Delivery(id=$id, phoneNumber='$phoneNumber', status=$status, assignedRobotId=$assignedRobotId)"
 }

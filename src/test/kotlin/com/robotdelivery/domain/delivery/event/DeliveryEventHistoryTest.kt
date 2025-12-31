@@ -208,6 +208,8 @@ class DeliveryEventHistoryTest {
                 deliveryId = DeliveryId(12L),
                 previousRobotId = RobotId(15L),
                 newRobotId = RobotId(16L),
+                estimatedPickupDuration = java.time.Duration.ofMinutes(5),
+                estimatedDeliveryDuration = java.time.Duration.ofMinutes(10),
             )
 
         val history = DeliveryEventHistory.from(event)
