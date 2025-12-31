@@ -18,6 +18,7 @@ import com.robotdelivery.domain.robot.findById
 import com.robotdelivery.domain.robot.vo.RobotStatus
 import com.robotdelivery.infrastructure.persistence.InMemoryRobotIotStateRepository
 import org.assertj.core.api.Assertions.assertThat
+import java.time.Duration
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested

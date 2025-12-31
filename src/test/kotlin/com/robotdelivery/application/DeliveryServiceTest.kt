@@ -73,10 +73,10 @@ class DeliveryServiceTest : IntegrationTestSupport() {
         fun `배달을 성공적으로 생성한다`() {
             val command = createDeliveryCommand()
 
-            val deliveryId = deliveryService.createDelivery(command)
+            val result = deliveryService.createDelivery(command)
 
-            assertThat(deliveryId).isNotNull()
-            val savedDelivery = deliveryRepository.findById(deliveryId)
+            assertThat(result.deliveryId).isNotNull()
+            val savedDelivery = deliveryRepository.findById(result.deliveryId)
             assertThat(savedDelivery).isNotNull()
         }
 
@@ -85,9 +85,9 @@ class DeliveryServiceTest : IntegrationTestSupport() {
         fun `생성된 배달은 PENDING 상태이다`() {
             val command = createDeliveryCommand()
 
-            val deliveryId = deliveryService.createDelivery(command)
+            val result = deliveryService.createDelivery(command)
 
-            val savedDelivery = deliveryRepository.findById(deliveryId)!!
+            val savedDelivery = deliveryRepository.findById(result.deliveryId)!!
             assertThat(savedDelivery.status).isEqualTo(DeliveryStatus.PENDING)
         }
 
@@ -96,9 +96,9 @@ class DeliveryServiceTest : IntegrationTestSupport() {
         fun `픽업 목적지 정보가 올바르게 저장된다`() {
             val command = createDeliveryCommand()
 
-            val deliveryId = deliveryService.createDelivery(command)
+            val result = deliveryService.createDelivery(command)
 
-            val savedDelivery = deliveryRepository.findById(deliveryId)!!
+            val savedDelivery = deliveryRepository.findById(result.deliveryId)!!
             assertThat(savedDelivery.pickupDestination.address).isEqualTo("서울시 중구 세종대로 110")
             assertThat(savedDelivery.pickupDestination.addressDetail).isEqualTo("시청역 1번 출구")
             assertThat(savedDelivery.pickupDestination.location.latitude).isEqualTo(37.5665)
@@ -110,9 +110,9 @@ class DeliveryServiceTest : IntegrationTestSupport() {
         fun `배송 목적지 정보가 올바르게 저장된다`() {
             val command = createDeliveryCommand()
 
-            val deliveryId = deliveryService.createDelivery(command)
+            val result = deliveryService.createDelivery(command)
 
-            val savedDelivery = deliveryRepository.findById(deliveryId)!!
+            val savedDelivery = deliveryRepository.findById(result.deliveryId)!!
             assertThat(savedDelivery.deliveryDestination.address).isEqualTo("서울시 강남구 테헤란로 1")
             assertThat(savedDelivery.deliveryDestination.addressDetail).isEqualTo("2층")
             assertThat(savedDelivery.deliveryDestination.location.latitude).isEqualTo(37.4979)
@@ -124,9 +124,9 @@ class DeliveryServiceTest : IntegrationTestSupport() {
         fun `전화번호가 올바르게 저장된다`() {
             val command = createDeliveryCommand(phoneNumber = "010-9999-8888")
 
-            val deliveryId = deliveryService.createDelivery(command)
+            val result = deliveryService.createDelivery(command)
 
-            val savedDelivery = deliveryRepository.findById(deliveryId)!!
+            val savedDelivery = deliveryRepository.findById(result.deliveryId)!!
             assertThat(savedDelivery.phoneNumber).isEqualTo("010-9999-8888")
         }
 
@@ -139,9 +139,9 @@ class DeliveryServiceTest : IntegrationTestSupport() {
                     deliveryAddressDetail = null,
                 )
 
-            val deliveryId = deliveryService.createDelivery(command)
+            val result = deliveryService.createDelivery(command)
 
-            val savedDelivery = deliveryRepository.findById(deliveryId)!!
+            val savedDelivery = deliveryRepository.findById(result.deliveryId)!!
             assertThat(savedDelivery.pickupDestination.addressDetail).isNull()
             assertThat(savedDelivery.deliveryDestination.addressDetail).isNull()
         }
@@ -165,9 +165,9 @@ class DeliveryServiceTest : IntegrationTestSupport() {
             val orderNo = "ORDER-TEST-002"
             val command = createDeliveryCommand(orderNo = orderNo)
 
-            val deliveryId = deliveryService.createDelivery(command)
+            val result = deliveryService.createDelivery(command)
 
-            val savedDelivery = deliveryRepository.findById(deliveryId)!!
+            val savedDelivery = deliveryRepository.findById(result.deliveryId)!!
             val savedOrder = orderRepository.getByOrderNo(OrderNo(orderNo))
             assertThat(savedDelivery.orderId).isEqualTo(savedOrder.getOrderId())
         }
@@ -188,9 +188,9 @@ class DeliveryServiceTest : IntegrationTestSupport() {
                         ),
                 )
 
-            val deliveryId = deliveryService.createDelivery(command)
+            val result = deliveryService.createDelivery(command)
 
-            val savedDelivery = deliveryRepository.findById(deliveryId)!!
+            val savedDelivery = deliveryRepository.findById(result.deliveryId)!!
             assertThat(savedDelivery.totalVolume).isEqualTo(Volume(10.0))
         }
     }
@@ -203,12 +203,12 @@ class DeliveryServiceTest : IntegrationTestSupport() {
         fun `기존 주문으로 추가 배달을 생성할 수 있다`() {
             val orderNo = "ORDER-ADDITIONAL-001"
             val command = createDeliveryCommand(orderNo = orderNo)
-            val firstDeliveryId = deliveryService.createDelivery(command)
+            val firstResult = deliveryService.createDelivery(command)
 
-            val secondDeliveryId = deliveryService.createAdditionalDelivery(OrderNo(orderNo))
+            val secondResult = deliveryService.createAdditionalDelivery(OrderNo(orderNo))
 
-            assertThat(secondDeliveryId).isNotEqualTo(firstDeliveryId)
-            val secondDelivery = deliveryRepository.findById(secondDeliveryId)!!
+            assertThat(secondResult.deliveryId).isNotEqualTo(firstResult.deliveryId)
+            val secondDelivery = deliveryRepository.findById(secondResult.deliveryId)!!
             assertThat(secondDelivery).isNotNull()
         }
 
@@ -217,12 +217,12 @@ class DeliveryServiceTest : IntegrationTestSupport() {
         fun `추가 배달은 원본 주문과 같은 목적지를 가진다`() {
             val orderNo = "ORDER-ADDITIONAL-002"
             val command = createDeliveryCommand(orderNo = orderNo)
-            val firstDeliveryId = deliveryService.createDelivery(command)
+            val firstResult = deliveryService.createDelivery(command)
 
-            val secondDeliveryId = deliveryService.createAdditionalDelivery(OrderNo(orderNo))
+            val secondResult = deliveryService.createAdditionalDelivery(OrderNo(orderNo))
 
-            val firstDelivery = deliveryRepository.findById(firstDeliveryId)!!
-            val secondDelivery = deliveryRepository.findById(secondDeliveryId)!!
+            val firstDelivery = deliveryRepository.findById(firstResult.deliveryId)!!
+            val secondDelivery = deliveryRepository.findById(secondResult.deliveryId)!!
             assertThat(secondDelivery.pickupDestination).isEqualTo(firstDelivery.pickupDestination)
             assertThat(secondDelivery.deliveryDestination).isEqualTo(firstDelivery.deliveryDestination)
         }
@@ -232,12 +232,12 @@ class DeliveryServiceTest : IntegrationTestSupport() {
         fun `추가 배달은 원본 주문과 같은 orderId를 가진다`() {
             val orderNo = "ORDER-ADDITIONAL-003"
             val command = createDeliveryCommand(orderNo = orderNo)
-            val firstDeliveryId = deliveryService.createDelivery(command)
+            val firstResult = deliveryService.createDelivery(command)
 
-            val secondDeliveryId = deliveryService.createAdditionalDelivery(OrderNo(orderNo))
+            val secondResult = deliveryService.createAdditionalDelivery(OrderNo(orderNo))
 
-            val firstDelivery = deliveryRepository.findById(firstDeliveryId)!!
-            val secondDelivery = deliveryRepository.findById(secondDeliveryId)!!
+            val firstDelivery = deliveryRepository.findById(firstResult.deliveryId)!!
+            val secondDelivery = deliveryRepository.findById(secondResult.deliveryId)!!
             assertThat(secondDelivery.orderId).isEqualTo(firstDelivery.orderId)
         }
 
@@ -246,12 +246,12 @@ class DeliveryServiceTest : IntegrationTestSupport() {
         fun `추가 배달은 원본 주문과 같은 totalVolume을 가진다`() {
             val orderNo = "ORDER-ADDITIONAL-004"
             val command = createDeliveryCommand(orderNo = orderNo)
-            val firstDeliveryId = deliveryService.createDelivery(command)
+            val firstResult = deliveryService.createDelivery(command)
 
-            val secondDeliveryId = deliveryService.createAdditionalDelivery(OrderNo(orderNo))
+            val secondResult = deliveryService.createAdditionalDelivery(OrderNo(orderNo))
 
-            val firstDelivery = deliveryRepository.findById(firstDeliveryId)!!
-            val secondDelivery = deliveryRepository.findById(secondDeliveryId)!!
+            val firstDelivery = deliveryRepository.findById(firstResult.deliveryId)!!
+            val secondDelivery = deliveryRepository.findById(secondResult.deliveryId)!!
             assertThat(secondDelivery.totalVolume).isEqualTo(firstDelivery.totalVolume)
         }
 

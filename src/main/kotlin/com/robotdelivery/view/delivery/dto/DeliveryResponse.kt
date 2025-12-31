@@ -7,12 +7,16 @@ sealed class DeliveryResponse(
 
 data class CreateDeliveryResponse(
     override val deliveryId: Long,
+    val estimatedPickupSeconds: Long,
+    val estimatedDeliverySeconds: Long,
     override val message: String = "배달이 성공적으로 생성되었습니다.",
 ) : DeliveryResponse(deliveryId, message)
 
 data class CreateAdditionalDeliveryResponse(
     override val deliveryId: Long,
     val orderNo: String,
+    val estimatedPickupSeconds: Long,
+    val estimatedDeliverySeconds: Long,
     override val message: String = "추가 배달이 성공적으로 생성되었습니다.",
 ) : DeliveryResponse(deliveryId, message)
 

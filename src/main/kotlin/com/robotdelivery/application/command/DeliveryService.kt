@@ -2,14 +2,16 @@ package com.robotdelivery.application.command
 
 import com.robotdelivery.application.command.vo.ChangeStatusResult
 import com.robotdelivery.application.command.vo.CreateDeliveryCommand
+import com.robotdelivery.application.command.vo.CreateDeliveryResult
 import com.robotdelivery.domain.common.vo.DeliveryId
 import com.robotdelivery.domain.common.vo.OrderNo
 import com.robotdelivery.domain.common.vo.RobotId
-import com.robotdelivery.domain.delivery.Delivery
 import com.robotdelivery.domain.delivery.DeliveryAssignmentService
+import com.robotdelivery.domain.delivery.DeliveryFactory
 import com.robotdelivery.domain.delivery.DeliveryRepository
 import com.robotdelivery.domain.delivery.getById
 import com.robotdelivery.domain.delivery.vo.AssignmentResult
+import com.robotdelivery.domain.delivery.vo.DeliveryCreationResult
 import com.robotdelivery.domain.delivery.vo.DeliveryStatus
 import com.robotdelivery.domain.order.Order
 import com.robotdelivery.domain.order.OrderRepository
@@ -28,35 +30,61 @@ class DeliveryService(
     private val robotRepository: RobotRepository,
     private val robotClient: RobotClient,
     private val deliveryAssignmentService: DeliveryAssignmentService,
+    private val deliveryFactory: DeliveryFactory,
 ) {
-    fun createDelivery(command: CreateDeliveryCommand): DeliveryId {
+    fun createDelivery(command: CreateDeliveryCommand): CreateDeliveryResult {
         val order = command.toOrder()
         val savedOrder = orderRepository.saveAndFlush(order)
 
         val totalVolume = savedOrder.calculateTotalVolume()
-        val delivery = command.toDelivery(savedOrder.getOrderId(), totalVolume)
 
-        return deliveryRepository.saveAndFlush(delivery).getDeliveryId()
+        val result =
+            deliveryFactory.create(
+                pickupDestination = command.pickupDestination.toDestination(),
+                deliveryDestination = command.deliveryDestination.toDestination(),
+                phoneNumber = command.phoneNumber,
+                orderId = savedOrder.getOrderId(),
+                totalVolume = totalVolume,
+            )
+
+        return saveDelivery(result)
     }
 
-    fun createAdditionalDelivery(orderNo: OrderNo): DeliveryId {
+    fun createAdditionalDelivery(orderNo: OrderNo): CreateDeliveryResult {
         val order = orderRepository.getByOrderNo(orderNo)
         return createDeliveryFromOrder(order)
     }
 
-    private fun createDeliveryFromOrder(order: Order): DeliveryId {
+    private fun createDeliveryFromOrder(order: Order): CreateDeliveryResult {
         val totalVolume = order.calculateTotalVolume()
-        val delivery =
-            Delivery(
-                orderId = order.getOrderId(),
+
+        val result =
+            deliveryFactory.create(
                 pickupDestination = order.pickupDestination,
                 deliveryDestination = order.deliveryDestination,
                 phoneNumber = order.phoneNumber,
+                orderId = order.getOrderId(),
                 totalVolume = totalVolume,
             )
 
-        return deliveryRepository.saveAndFlush(delivery).getDeliveryId()
+        return saveDelivery(result)
     }
+
+    private fun saveDelivery(result: DeliveryCreationResult): CreateDeliveryResult =
+        when (result) {
+            is DeliveryCreationResult.RouteNotAvailable -> {
+                throw IllegalStateException("배달 경로를 찾을 수 없습니다.")
+            }
+
+            is DeliveryCreationResult.Success -> {
+                val savedDelivery = deliveryRepository.saveAndFlush(result.delivery)
+                CreateDeliveryResult(
+                    deliveryId = savedDelivery.getDeliveryId(),
+                    estimatedPickupDuration = result.routeResult.toPickupDuration,
+                    estimatedDeliveryDuration = result.routeResult.toDeliveryDuration,
+                )
+            }
+        }
 
     fun startDelivery(deliveryId: DeliveryId) {
         val delivery = deliveryRepository.getById(deliveryId)

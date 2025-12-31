@@ -1,6 +1,7 @@
 package com.robotdelivery.config
 
 import com.robotdelivery.domain.delivery.DeliveryAssignmentService
+import com.robotdelivery.domain.delivery.DeliveryFactory
 import com.robotdelivery.domain.delivery.DeliveryRepository
 import com.robotdelivery.domain.robot.RobotAvailabilityService
 import com.robotdelivery.domain.robot.RobotIotStateRepository
@@ -24,4 +25,7 @@ class DomainServiceConfig {
         robotMapClient: RobotMapClient,
     ): DeliveryAssignmentService =
         DeliveryAssignmentService(deliveryRepository, robotAvailabilityService, robotMapClient)
+
+    @Bean
+    fun deliveryFactory(robotMapClient: RobotMapClient): DeliveryFactory = DeliveryFactory(robotMapClient)
 }
